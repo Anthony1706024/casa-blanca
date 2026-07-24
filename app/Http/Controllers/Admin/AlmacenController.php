@@ -109,18 +109,18 @@ class AlmacenController extends Controller
 
         if ($request->hasFile('imagen')) {
             $imagen = $request->file('imagen');
-            $nombreWebp = 'productos/' . Str::uuid() . '.webp';
             
-            if (!Storage::disk('public')->exists('productos')) {
-                Storage::disk('public')->makeDirectory('productos');
-            }
+            // Generar nombre único con extensión original
+            $nombreImagen = 'productos/' . Str::uuid() . '.' . $imagen->getClientOriginalExtension();
             
-            $imagenWebp = imagecreatefromstring(file_get_contents($imagen));
-            if ($imagenWebp) {
-                imagewebp($imagenWebp, storage_path('app/public/' . $nombreWebp), 80);
-                imagedestroy($imagenWebp);
-                $data['imagen'] = $nombreWebp;
-            }
+            // Guardar la imagen en su formato original
+            $imagen->storeAs(
+                'productos',
+                basename($nombreImagen),
+                'public'
+            );
+            
+            $data['imagen'] = $nombreImagen;
         }
 
         Producto::create($data);
@@ -172,23 +172,24 @@ class AlmacenController extends Controller
         $data = $request->except(['imagen']);
 
         if ($request->hasFile('imagen')) {
+            // Eliminar la imagen anterior si existe
             if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
                 Storage::disk('public')->delete($producto->imagen);
             }
             
             $imagen = $request->file('imagen');
-            $nombreWebp = 'productos/' . Str::uuid() . '.webp';
             
-            if (!Storage::disk('public')->exists('productos')) {
-                Storage::disk('public')->makeDirectory('productos');
-            }
+            // Generar nombre único con extensión original
+            $nombreImagen = 'productos/' . Str::uuid() . '.' . $imagen->getClientOriginalExtension();
             
-            $imagenWebp = imagecreatefromstring(file_get_contents($imagen));
-            if ($imagenWebp) {
-                imagewebp($imagenWebp, storage_path('app/public/' . $nombreWebp), 80);
-                imagedestroy($imagenWebp);
-                $data['imagen'] = $nombreWebp;
-            }
+            // Guardar la imagen en su formato original
+            $imagen->storeAs(
+                'productos',
+                basename($nombreImagen),
+                'public'
+            );
+            
+            $data['imagen'] = $nombreImagen;
         }
 
         $producto->update($data);
