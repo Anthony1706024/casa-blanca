@@ -47,14 +47,14 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-400 text-sm">Usuarios</p>
-                            <p class="text-white text-3xl font-bold mt-1">24</p>
+                            <p class="text-white text-3xl font-bold mt-1">{{ $usuarios }}</p>
                         </div>
                         <div class="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
                             <i class="fas fa-users text-orange-500 text-xl"></i>
                         </div>
                     </div>
                     <p class="text-green-500 text-sm mt-3">
-                        <i class="fas fa-arrow-up mr-1"></i> 12% este mes
+                        Registrados en el sistema
                     </p>
                 </div>
 
@@ -62,14 +62,14 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-400 text-sm">Productos</p>
-                            <p class="text-white text-3xl font-bold mt-1">156</p>
+                            <p class="text-white text-3xl font-bold mt-1">{{ $productos }}</p>
                         </div>
                         <div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                             <i class="fas fa-box text-green-500 text-xl"></i>
                         </div>
                     </div>
                     <p class="text-green-500 text-sm mt-3">
-                        <i class="fas fa-arrow-up mr-1"></i> 8% este mes
+                        En la carta
                     </p>
                 </div>
 
@@ -77,14 +77,14 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-400 text-sm">Insumos</p>
-                            <p class="text-white text-3xl font-bold mt-1">89</p>
+                            <p class="text-white text-3xl font-bold mt-1">{{ $insumos }}</p>
                         </div>
                         <div class="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
                             <i class="fas fa-cubes text-orange-500 text-xl"></i>
                         </div>
                     </div>
                     <p class="text-yellow-500 text-sm mt-3">
-                        <i class="fas fa-exclamation-triangle mr-1"></i> 5 bajo stock
+                        <i class="fas fa-exclamation-triangle mr-1"></i> {{ $insumosBajos }} bajo stock
                     </p>
                 </div>
 
@@ -92,14 +92,14 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-400 text-sm">Ventas Hoy</p>
-                            <p class="text-white text-3xl font-bold mt-1">S/ 1,250</p>
+                            <p class="text-white text-3xl font-bold mt-1">S/ {{ number_format($ventasHoy, 2) }}</p>
                         </div>
                         <div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                             <i class="fas fa-shopping-cart text-green-500 text-xl"></i>
                         </div>
                     </div>
                     <p class="text-green-500 text-sm mt-3">
-                        <i class="fas fa-arrow-up mr-1"></i> 23% vs ayer
+                        {{ $pedidosPendientes }} pedidos por cobrar
                     </p>
                 </div>
             </div>

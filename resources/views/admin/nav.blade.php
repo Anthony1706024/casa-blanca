@@ -16,7 +16,7 @@
     <!-- Logo -->
     <div class="p-6 border-b border-orange-500/20">
         <div class="flex items-center gap-3">
-            <img src="/img/logo.png" alt="Casa Blanca" class="w-10 h-10 object-contain">
+            <img src="/img/logo.webp" alt="Casa Blanca" class="w-10 h-10 object-contain">
             <div>
                 <h2 class="text-white font-bold text-lg">CASA BLANCA</h2>
                 <p class="text-orange-500 text-xs font-semibold">Administrador</p>
@@ -51,6 +51,24 @@
             <span class="text-sm font-medium">Agregar Usuario</span>
         </a>
 
+        <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Insumos</p>
+
+        <a href="{{ route('admin.insumos.index') }}"
+           class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.insumos.index') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-cubes w-5 text-center"></i>
+            <span class="text-sm font-medium">Ver Insumos</span>
+        </a>
+        <a href="{{ route('admin.insumos.categorias.index') }}"
+           class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.insumos.categorias.index') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-tags w-5 text-center"></i>
+            <span class="text-sm font-medium">Categorías de Insumo</span>
+        </a>
+        <a href="{{ route('admin.insumos.create') }}"
+           class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.insumos.create') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-cube w-5 text-center"></i>
+            <span class="text-sm font-medium">Registrar Insumo</span>
+        </a>
+
         <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Almacén</p>
 
         <!-- Ver Almacén - SOLO index -->
@@ -82,9 +100,25 @@
         <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Ventas</p>
 
         <!-- Ver Ventas -->
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-orange-500/10 hover:text-white transition mb-1">
+        <a href="{{ route('admin.ventas.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.ventas.index') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
             <i class="fas fa-shopping-cart w-5 text-center"></i>
             <span class="text-sm font-medium">Ver Ventas</span>
+        </a>
+
+        <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Precios</p>
+
+        <a href="{{ route('admin.precios.index') }}" 
+           class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.precios.*') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-tags w-5 text-center"></i>
+            <span class="text-sm font-medium">Precios y Detalle</span>
+        </a>
+
+        <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Página Web</p>
+
+        <a href="{{ route('admin.contenido.index') }}" 
+           class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.contenido.*') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-globe w-5 text-center"></i>
+            <span class="text-sm font-medium">Contenido de la Página</span>
         </a>
 
         <!-- Cerrar Sesión -->

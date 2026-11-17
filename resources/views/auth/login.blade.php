@@ -32,7 +32,7 @@
             align-items: center;
             background: 
                 linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75)),
-                url('/img/entrada.png');
+                url('/img/entrada.webp');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -334,7 +334,7 @@
         <div class="login-box">
             <!-- LOGO - MÁS GRANDE -->
             <div class="logo-container">
-                <img src="/img/logo.png" alt="Casa Blanca" />
+                <img src="/img/logo.webp" alt="Casa Blanca" />
                 <h1>CASA <span>BLANCA</span></h1>
                 <p>Club Campestre</p>
             </div>

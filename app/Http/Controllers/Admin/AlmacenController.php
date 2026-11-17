@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Producto;
 use App\Models\Categoria;
+use App\Models\Insumo;
 use App\Models\Subcategoria;
+use App\Services\ImagenService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class AlmacenController extends Controller
 {
@@ -18,7 +19,7 @@ class AlmacenController extends Controller
     // ==========================================
     public function index(Request $request)
     {
-        $query = Producto::with(['categoria', 'subcategoria']);
+        $query = Producto::with(['categoria', 'subcategoria', 'insumos']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -49,7 +50,12 @@ class AlmacenController extends Controller
     public function updateStock(Request $request, $id)
     {
         $producto = Producto::findOrFail($id);
-        
+
+        if ($producto->esPlato()) {
+            return redirect()->route('admin.almacen.index')
+                ->with('error', 'Este producto usa receta: su stock depende de los insumos');
+        }
+
         $request->validate([
             'stock' => 'required|integer|min:0',
         ]);
@@ -67,6 +73,7 @@ class AlmacenController extends Controller
     {
         $categorias = Categoria::all();
         $subcategorias = Subcategoria::all();
+        $insumos = Insumo::orderBy('nombre')->get();
         $ultimoProducto = Producto::orderBy('id', 'desc')->first();
         if ($ultimoProducto) {
             $numero = intval(substr($ultimoProducto->codigo, 4)) + 1;
@@ -75,7 +82,7 @@ class AlmacenController extends Controller
             $codigoSugerido = 'PRO-000001';
         }
         
-        return view('admin.almacen.create', compact('categorias', 'subcategorias', 'codigoSugerido'));
+        return view('admin.almacen.create', compact('categorias', 'subcategorias', 'insumos', 'codigoSugerido'));
     }
 
     // ==========================================
@@ -88,42 +95,39 @@ class AlmacenController extends Controller
             'nombre' => 'required|string|max:200',
             'categoria_id' => 'required|exists:categorias,id',
             'subcategoria_id' => 'nullable|exists:subcategorias,id',
-            'stock' => 'required|integer|min:0',
+            ...$this->reglasTipo(),
             'precio_compra' => 'nullable|numeric|min:0',
             'precio_venta' => 'nullable|numeric|min:0',
             'descripcion' => 'nullable|string',
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:8192',
         ], [
             'codigo.unique' => 'El código ya está registrado en otro producto.',
             'codigo.required' => 'El código es obligatorio.',
             'nombre.required' => 'El nombre del producto es obligatorio.',
             'categoria_id.required' => 'Debes seleccionar una categoría.',
-            'stock.required' => 'El stock inicial es obligatorio.',
+            'stock.required_if' => 'El stock inicial es obligatorio.',
             'stock.min' => 'El stock no puede ser negativo.',
             'imagen.image' => 'El archivo debe ser una imagen.',
-            'imagen.mimes' => 'La imagen debe ser JPG, PNG, JPEG o GIF.',
-            'imagen.max' => 'La imagen no debe pesar más de 2MB.',
+            'imagen.mimes' => 'La imagen debe ser JPG, PNG, GIF o WEBP.',
+            'imagen.max' => 'La imagen no debe pesar más de 8MB.',
+            ...$this->mensajesTipo(),
         ]);
 
         $data = $request->all();
 
-        if ($request->hasFile('imagen')) {
-            $imagen = $request->file('imagen');
-            
-            // Generar nombre único con extensión original
-            $nombreImagen = 'productos/' . Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-            
-            // Guardar la imagen en su formato original
-            $imagen->storeAs(
-                'productos',
-                basename($nombreImagen),
-                'public'
-            );
-            
-            $data['imagen'] = $nombreImagen;
+        // Un plato no maneja stock propio: depende de sus insumos
+        if ($request->tipo === Producto::PLATO) {
+            $data['stock'] = 0;
         }
 
-        Producto::create($data);
+        if ($request->hasFile('imagen')) {
+            $data['imagen'] = app(ImagenService::class)->guardar($request->file('imagen'), 'productos');
+        }
+
+        DB::transaction(function () use ($data, $request) {
+            $producto = Producto::create($data);
+            $this->guardarReceta($producto, $request);
+        });
 
         return redirect()->route('admin.almacen.index')
             ->with('success', 'Producto registrado exitosamente');
@@ -134,10 +138,11 @@ class AlmacenController extends Controller
     // ==========================================
     public function edit($id)
     {
-        $producto = Producto::findOrFail($id);
+        $producto = Producto::with('insumos')->findOrFail($id);
         $categorias = Categoria::all();
         $subcategorias = Subcategoria::all();
-        return view('admin.almacen.edit', compact('producto', 'categorias', 'subcategorias'));
+        $insumos = Insumo::orderBy('nombre')->get();
+        return view('admin.almacen.edit', compact('producto', 'categorias', 'subcategorias', 'insumos'));
     }
 
     // ==========================================
@@ -152,47 +157,42 @@ class AlmacenController extends Controller
             'nombre' => 'required|string|max:200',
             'categoria_id' => 'required|exists:categorias,id',
             'subcategoria_id' => 'nullable|exists:subcategorias,id',
-            'stock' => 'required|integer|min:0',
+            ...$this->reglasTipo(),
             'precio_compra' => 'nullable|numeric|min:0',
             'precio_venta' => 'nullable|numeric|min:0',
             'descripcion' => 'nullable|string',
-            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:8192',
         ], [
             'codigo.unique' => 'El código ya está registrado en otro producto.',
             'codigo.required' => 'El código es obligatorio.',
             'nombre.required' => 'El nombre del producto es obligatorio.',
             'categoria_id.required' => 'Debes seleccionar una categoría.',
-            'stock.required' => 'El stock es obligatorio.',
+            'stock.required_if' => 'El stock es obligatorio.',
             'stock.min' => 'El stock no puede ser negativo.',
             'imagen.image' => 'El archivo debe ser una imagen.',
-            'imagen.mimes' => 'La imagen debe ser JPG, PNG, JPEG o GIF.',
-            'imagen.max' => 'La imagen no debe pesar más de 2MB.',
+            'imagen.mimes' => 'La imagen debe ser JPG, PNG, GIF o WEBP.',
+            'imagen.max' => 'La imagen no debe pesar más de 8MB.',
+            ...$this->mensajesTipo(),
         ]);
 
         $data = $request->except(['imagen']);
 
-        if ($request->hasFile('imagen')) {
-            // Eliminar la imagen anterior si existe
-            if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
-                Storage::disk('public')->delete($producto->imagen);
-            }
-            
-            $imagen = $request->file('imagen');
-            
-            // Generar nombre único con extensión original
-            $nombreImagen = 'productos/' . Str::uuid() . '.' . $imagen->getClientOriginalExtension();
-            
-            // Guardar la imagen en su formato original
-            $imagen->storeAs(
-                'productos',
-                basename($nombreImagen),
-                'public'
-            );
-            
-            $data['imagen'] = $nombreImagen;
+        // Un plato no maneja stock propio: depende de sus insumos
+        if ($request->tipo === Producto::PLATO) {
+            $data['stock'] = 0;
         }
 
-        $producto->update($data);
+        if ($request->hasFile('imagen')) {
+            // Eliminar la imagen anterior si existe
+            app(ImagenService::class)->eliminar($producto->imagen);
+
+            $data['imagen'] = app(ImagenService::class)->guardar($request->file('imagen'), 'productos');
+        }
+
+        DB::transaction(function () use ($producto, $data, $request) {
+            $producto->update($data);
+            $this->guardarReceta($producto, $request);
+        });
 
         return redirect()->route('admin.almacen.index')
             ->with('success', 'Producto actualizado correctamente');
@@ -204,11 +204,12 @@ class AlmacenController extends Controller
     public function destroy($id)
     {
         $producto = Producto::findOrFail($id);
-        
-        if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
-            Storage::disk('public')->delete($producto->imagen);
+
+        if ($producto->pedidoItems()->exists()) {
+            return redirect()->route('admin.almacen.index')
+                ->with('error', 'No puedes eliminar un producto que ya tiene pedidos registrados');
         }
-        
+
         $producto->delete();
 
         return redirect()->route('admin.almacen.index')
@@ -296,5 +297,44 @@ class AlmacenController extends Controller
     {
         $subcategorias = Subcategoria::where('categoria_id', $categoria_id)->get();
         return response()->json($subcategorias);
+    }
+
+    // ==========================================
+    // TIPO DE PRODUCTO Y RECETA
+    // ==========================================
+    private function reglasTipo(): array
+    {
+        return [
+            'tipo' => ['required', Rule::in([Producto::DIRECTO, Producto::PLATO])],
+            'stock' => 'exclude_if:tipo,plato|required_if:tipo,directo|integer|min:0',
+            'receta' => 'exclude_if:tipo,directo|required_if:tipo,plato|array|min:1',
+            'receta.*.insumo_id' => 'exclude_if:tipo,directo|required|distinct|exists:insumos,id',
+            'receta.*.cantidad' => 'exclude_if:tipo,directo|required|numeric|gt:0|max:999999',
+        ];
+    }
+
+    private function mensajesTipo(): array
+    {
+        return [
+            'receta.required_if' => 'Un plato debe tener al menos un insumo en su receta.',
+            'receta.min' => 'Un plato debe tener al menos un insumo en su receta.',
+            'receta.*.insumo_id.required' => 'Selecciona el insumo.',
+            'receta.*.insumo_id.distinct' => 'No repitas el mismo insumo en la receta.',
+            'receta.*.cantidad.required' => 'Indica la cantidad del insumo.',
+            'receta.*.cantidad.gt' => 'La cantidad del insumo debe ser mayor a cero.',
+        ];
+    }
+
+    private function guardarReceta(Producto $producto, Request $request): void
+    {
+        $receta = [];
+
+        if ($request->tipo === Producto::PLATO) {
+            foreach ($request->receta as $linea) {
+                $receta[$linea['insumo_id']] = ['cantidad' => $linea['cantidad'], 'visible_cliente' => ! empty($linea['visible'])];
+            }
+        }
+
+        $producto->insumos()->sync($receta);
     }
 }

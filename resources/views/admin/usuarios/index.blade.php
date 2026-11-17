@@ -14,15 +14,16 @@
 
     <style>
         body {
-            background: #0d0d0d;
+            background: #ffffff;
             font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1a1a1a;
         }
 
         ::-webkit-scrollbar {
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #0d0d0d;
+            background: #f1f1f1;
         }
         ::-webkit-scrollbar-thumb {
             background: #f97316;
@@ -48,26 +49,97 @@
             box-shadow: 0 10px 40px rgba(249, 115, 22, 0.15);
         }
 
-        /* Badges de roles */
+        /* Badges de roles - Versión clara */
         .badge-admin {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
+            background: #fee2e2;
+            color: #dc2626;
         }
         .badge-mozo {
-            background: rgba(249, 115, 22, 0.2);
-            color: #f97316;
+            background: #fed7aa;
+            color: #ea580c;
         }
         .badge-cajera {
-            background: rgba(34, 197, 94, 0.2);
-            color: #22c55e;
+            background: #dcfce7;
+            color: #16a34a;
         }
         .badge-gerente {
-            background: rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
+            background: #dbeafe;
+            color: #2563eb;
         }
         .badge-recepcion {
-            background: rgba(168, 85, 247, 0.2);
-            color: #a855f7;
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+        
+        /* Estilos para tabla en fondo blanco */
+        .table-container {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-container table thead th {
+            color: #6b7280;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 12px 16px;
+        }
+
+        .table-container table tbody td {
+            color: #1a1a1a;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .table-container table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        /* Botones en versión clara */
+        .btn-edit {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .btn-edit:hover {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .btn-delete {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        .btn-delete:hover {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .btn-primary {
+            background: #f97316;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #ea580c;
+        }
+
+        /* Mensajes de éxito/error en versión clara */
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #16a34a;
+        }
+        .alert-success i {
+            color: #22c55e;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #dc2626;
+        }
+        .alert-error i {
+            color: #ef4444;
         }
     </style>
 </head>
@@ -86,16 +158,16 @@
             <!-- Header -->
             <div class="flex justify-between items-center mb-8">
                 <div>
-                    <h1 class="text-3xl font-bold text-white">
+                    <h1 class="text-3xl font-bold text-gray-800">
                         <i class="fas fa-users text-orange-500 mr-3"></i>
                         Lista de Usuarios
                     </h1>
-                    <p class="text-gray-400 mt-1">
+                    <p class="text-gray-500 mt-1">
                         Gestiona los usuarios del sistema
                     </p>
                 </div>
                 <a href="{{ route('admin.usuarios.create') }}" 
-                   class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2">
+                   class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 shadow-md hover:shadow-lg">
                     <i class="fas fa-user-plus"></i>
                     Nuevo Usuario
                 </a>
@@ -103,40 +175,40 @@
 
             <!-- Mensajes de éxito/error -->
             @if(session('success'))
-                <div class="bg-green-500/20 border border-green-500/30 text-green-400 px-6 py-4 rounded-lg mb-6 flex items-center gap-3">
-                    <i class="fas fa-check-circle text-green-500"></i>
+                <div class="alert-success px-6 py-4 rounded-lg mb-6 flex items-center gap-3">
+                    <i class="fas fa-check-circle"></i>
                     {{ session('success') }}
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="bg-red-500/20 border border-red-500/30 text-red-400 px-6 py-4 rounded-lg mb-6 flex items-center gap-3">
-                    <i class="fas fa-exclamation-circle text-red-500"></i>
+                <div class="alert-error px-6 py-4 rounded-lg mb-6 flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle"></i>
                     {{ session('error') }}
                 </div>
             @endif
 
             <!-- Tabla de Usuarios -->
-            <div class="bg-[#1a1a1a] rounded-lg p-6 border border-orange-500/20">
+            <div class="table-container overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead>
-                            <tr class="border-b border-orange-500/20">
-                                <th class="pb-3 text-gray-400 font-semibold text-sm">ID</th>
-                                <th class="pb-3 text-gray-400 font-semibold text-sm">Nombre</th>
-                                <th class="pb-3 text-gray-400 font-semibold text-sm">Email</th>
-                                <th class="pb-3 text-gray-400 font-semibold text-sm">Rol</th>
-                                <th class="pb-3 text-gray-400 font-semibold text-sm">Fecha Registro</th>
-                                <th class="pb-3 text-gray-400 font-semibold text-sm text-center">Acciones</th>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Fecha Registro</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($usuarios as $usuario)
-                            <tr class="border-b border-white/5 hover:bg-white/5 transition">
-                                <td class="py-3 text-white">#{{ $usuario->id }}</td>
-                                <td class="py-3 text-white font-medium">{{ $usuario->name }}</td>
-                                <td class="py-3 text-gray-300">{{ $usuario->email }}</td>
-                                <td class="py-3">
+                            <tr>
+                                <td class="font-medium">#{{ $usuario->id }}</td>
+                                <td class="font-medium">{{ $usuario->name }}</td>
+                                <td>{{ $usuario->email }}</td>
+                                <td>
                                     <span class="px-3 py-1 rounded-full text-xs font-semibold 
                                         @if($usuario->role && $usuario->role->nombre == 'admin') badge-admin
                                         @elseif($usuario->role && $usuario->role->nombre == 'mozo') badge-mozo
@@ -149,14 +221,14 @@
                                         {{ $usuario->role ? ucfirst($usuario->role->nombre) : 'Sin Rol' }}
                                     </span>
                                 </td>
-                                <td class="py-3 text-gray-400 text-sm">
+                                <td class="text-gray-500 text-sm">
                                     {{ $usuario->created_at ? $usuario->created_at->format('d/m/Y') : '-' }}
                                 </td>
-                                <td class="py-3">
+                                <td>
                                     <div class="flex items-center justify-center gap-2">
                                         <a href="{{ route('admin.usuarios.edit', $usuario->id) }}" 
-                                           class="text-blue-400 hover:text-blue-300 transition px-3 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-sm">
-                                            <i class="fas fa-edit mr-1"></i> Editar
+                                           class="btn-edit px-3 py-1 rounded text-sm font-medium transition flex items-center gap-1">
+                                            <i class="fas fa-edit"></i> Editar
                                         </a>
                                         @if($usuario->id != auth()->id())
                                         <form method="POST" action="{{ route('admin.usuarios.destroy', $usuario->id) }}" 
@@ -164,8 +236,8 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" 
-                                                    class="text-red-400 hover:text-red-300 transition px-3 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-sm">
-                                                <i class="fas fa-trash mr-1"></i> Eliminar
+                                                    class="btn-delete px-3 py-1 rounded text-sm font-medium transition flex items-center gap-1">
+                                                <i class="fas fa-trash"></i> Eliminar
                                             </button>
                                         </form>
                                         @endif
@@ -174,8 +246,8 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-gray-400">
-                                    <i class="fas fa-users text-4xl block mb-3 opacity-30"></i>
+                                <td colspan="6" class="py-8 text-center text-gray-500">
+                                    <i class="fas fa-users text-4xl block mb-3 text-gray-300"></i>
                                     No hay usuarios registrados
                                 </td>
                             </tr>
@@ -185,13 +257,13 @@
                 </div>
 
                 <!-- Paginación -->
-                <div class="mt-6">
+                <div class="px-6 py-4 border-t border-gray-200">
                     {{ $usuarios->links() }}
                 </div>
             </div>
 
             <!-- Footer -->
-            <div class="mt-8 text-center text-gray-600 text-sm">
+            <div class="mt-8 text-center text-gray-400 text-sm">
                 © {{ date('Y') }} Casa Blanca Club Campestre. Todos los derechos reservados.
             </div>
         </div>

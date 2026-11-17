@@ -1,1355 +1,331 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Casa Blanca Club Campestre</title>
+    <title>Casa Blanca | Restaurante Campestre en Poroto</title>
+    <meta name="description" content="{{ $contenido['hero_texto'] }}">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
-
-    <!-- Font Awesome -->
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700|lobster:400" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
-        /* Reset y base */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Instrument Sans', sans-serif;
-            background: #0d0d0d;
-            color: #e0e0e0;
-            min-height: 100vh;
-        }
-
         :root {
-            --orange: #f97316;
-            --orange-dark: #ea580c;
-            --orange-light: #fb923c;
-            --orange-glow: rgba(249, 115, 22, 0.3);
-            --green: #22c55e;
-            --green-dark: #16a34a;
-            --green-light: #4ade80;
-            --green-glow: rgba(34, 197, 94, 0.3);
-            --black: #0d0d0d;
-            --black-light: #1a1a1a;
-            --black-lighter: #2a2a2a;
-        }
-
-        /* ==========================================
-           NAVEGACIÓN
-        ========================================== */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            padding: 16px 40px;
-            background: rgba(13, 13, 13, 0.92);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(249, 115, 22, 0.15);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .navbar .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .navbar .logo span {
-            color: var(--orange);
-        }
-
-        .navbar .logo .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            color: white;
-            box-shadow: 0 4px 20px var(--orange-glow);
-        }
-
-        .navbar .nav-links {
-            display: flex;
-            gap: 30px;
-            align-items: center;
-        }
-
-        .navbar .nav-links a {
-            color: #a0a0a0;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: color 0.3s ease;
-            position: relative;
-        }
-
-        .navbar .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--orange);
-            transition: width 0.3s ease;
-        }
-
-        .navbar .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .navbar .nav-links a:hover {
-            color: var(--orange);
-        }
-
-        .navbar .nav-links .btn-nav {
-            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-            color: white !important;
-            padding: 10px 28px;
-            border-radius: 10px;
-            font-weight: 600;
-            box-shadow: 0 4px 20px var(--orange-glow);
-            transition: all 0.3s ease;
-        }
-
-        .navbar .nav-links .btn-nav::after {
-            display: none;
-        }
-
-        .navbar .nav-links .btn-nav:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px var(--orange-glow);
-        }
-
-        /* Hamburguesa */
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            color: #a0a0a0;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        @media (max-width: 768px) {
-            .navbar {
-                padding: 12px 20px;
-            }
-            .navbar .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 70px;
-                left: 0;
-                right: 0;
-                background: rgba(13, 13, 13, 0.98);
-                padding: 20px;
-                border-bottom: 1px solid rgba(249, 115, 22, 0.15);
-                gap: 15px;
-            }
-            .navbar .nav-links.open {
-                display: flex;
-            }
-            .menu-toggle {
-                display: block;
-            }
-        }
-
-        /* ==========================================
-           HERO
-        ========================================== */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            padding: 80px 40px;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -10%;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 12s ease-in-out infinite;
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            bottom: -20%;
-            left: -5%;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(34, 197, 94, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 16s ease-in-out infinite reverse;
-        }
-
-        @keyframes float {
-            0%,
-            100% {
-                transform: translate(0, 0) scale(1);
-            }
-            50% {
-                transform: translate(30px, -30px) scale(1.1);
-            }
-        }
-
-        .hero-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 100%;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            align-items: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-text {
-            animation: fadeUp 1s ease;
-        }
-
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-text .badge {
-            display: inline-block;
-            background: rgba(249, 115, 22, 0.15);
-            color: var(--orange);
-            padding: 6px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            border: 1px solid rgba(249, 115, 22, 0.2);
-            margin-bottom: 20px;
-        }
-
-        .hero-text h1 {
-            font-size: 64px;
-            font-weight: 700;
-            color: white;
-            line-height: 1.1;
-            margin-bottom: 20px;
-        }
-
-        .hero-text h1 .highlight {
-            background: linear-gradient(135deg, var(--orange), var(--orange-light));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-text p {
-            font-size: 18px;
-            color: #a0a0a0;
-            line-height: 1.8;
-            margin-bottom: 30px;
-            max-width: 500px;
-        }
-
-        .hero-text .btn-group {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-            color: white;
-            padding: 14px 36px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 30px var(--orange-glow);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 40px var(--orange-glow);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: white;
-            padding: 14px 36px;
-            border: 2px solid rgba(249, 115, 22, 0.3);
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(249, 115, 22, 0.1);
-            border-color: var(--orange);
-            transform: translateY(-3px);
-        }
-
-        .hero-image {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            animation: fadeUp 1.2s ease;
-        }
-
-        .hero-card {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            border-radius: 16px;
-            padding: 30px 20px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-            min-height: 140px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .hero-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--orange);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .hero-card .icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-
-        .hero-card .title {
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .hero-card .desc {
-            color: #a0a0a0;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .hero-card.big {
-            grid-column: span 2;
-            min-height: 180px;
-        }
-
-        .hero-card.big .icon {
-            font-size: 60px;
-        }
-
-        .hero-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            margin-top: 40px;
-            padding-top: 40px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .stat-item .stat-icon {
-            color: var(--orange);
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-
-        .stat-item .stat-number {
-            font-size: 32px;
-            font-weight: 700;
-            color: white;
-        }
-
-        .stat-item .stat-number span {
-            color: var(--orange);
-        }
-
-        .stat-item .stat-label {
-            font-size: 13px;
-            color: #a0a0a0;
-        }
-
-        @media (max-width: 1024px) {
-            .hero-content {
-                grid-template-columns: 1fr;
-                text-align: center;
-                gap: 40px;
-            }
-            .hero-text p {
-                margin-left: auto;
-                margin-right: auto;
-            }
-            .hero-text .btn-group {
-                justify-content: center;
-            }
-            .hero-stats {
-                justify-items: center;
-            }
-            .hero-text h1 {
-                font-size: 48px;
-            }
-            .hero-image {
-                max-width: 400px;
-                margin: 0 auto;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .hero {
-                padding: 100px 20px 60px;
-            }
-            .hero-text h1 {
-                font-size: 36px;
-            }
-            .hero-image {
-                grid-template-columns: 1fr 1fr;
-                max-width: 100%;
-            }
-            .hero-card.big {
-                grid-column: span 2;
-            }
-            .hero-stats {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-        }
-
-        /* ==========================================
-           SECCIONES
-        ========================================== */
-        .section {
-            padding: 80px 40px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
-
-        .section-header .label {
-            color: var(--orange);
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 12px;
-        }
-
-        .section-header h2 {
-            font-family: 'Instrument Sans', sans-serif;
-            font-size: 42px;
-            color: white;
-            font-weight: 700;
-        }
-
-        .section-header h2 span {
-            color: var(--orange);
-        }
-
-        .section-header p {
-            color: #a0a0a0;
-            font-size: 16px;
-            margin-top: 12px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* ==========================================
-           CARACTERÍSTICAS
-        ========================================== */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-        }
-
-        .feature-card {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            padding: 36px 30px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--orange), var(--green), var(--orange));
-            background-size: 200% 100%;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            animation: gradientMove 3s ease infinite;
-        }
-
-        @keyframes gradientMove {
-            0%,
-            100% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-        }
-
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-8px);
-            border-color: rgba(249, 115, 22, 0.2);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .feature-card .icon {
-            width: 70px;
-            height: 70px;
-            background: rgba(249, 115, 22, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            margin: 0 auto 16px;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover .icon {
-            background: rgba(249, 115, 22, 0.2);
-            transform: scale(1.1);
-        }
-
-        .feature-card h3 {
-            color: white;
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .feature-card p {
-            color: #a0a0a0;
-            font-size: 14px;
-            line-height: 1.7;
-        }
-
-        /* ==========================================
-           MENÚ
-        ========================================== */
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 25px;
-        }
-
-        .menu-item {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .menu-item::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--orange), var(--green));
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .menu-item:hover::after {
-            transform: scaleX(1);
-        }
-
-        .menu-item:hover {
-            transform: translateY(-5px);
-            border-color: rgba(249, 115, 22, 0.2);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .menu-item .emoji {
-            font-size: 48px;
-            display: block;
-            margin-bottom: 12px;
-        }
-
-        .menu-item h4 {
-            color: white;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .menu-item .desc {
-            color: #a0a0a0;
-            font-size: 13px;
-            margin-top: 4px;
-        }
-
-        .menu-item .price {
-            color: var(--orange);
-            font-size: 22px;
-            font-weight: 700;
-            margin-top: 10px;
-            display: block;
-        }
-
-        /* ==========================================
-           GALERÍA
-        ========================================== */
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-        }
-
-        .gallery-item {
-            aspect-ratio: 1;
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            border-radius: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .gallery-item::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(34, 197, 94, 0.2));
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .gallery-item:hover::before {
-            opacity: 1;
-        }
-
-        .gallery-item:hover {
-            transform: scale(1.05);
-            border-color: var(--orange);
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
-        }
-
-        .gallery-item .emoji {
-            font-size: 56px;
-            position: relative;
-            z-index: 1;
-            transition: transform 0.4s ease;
-        }
-
-        .gallery-item:hover .emoji {
-            transform: scale(1.2);
-        }
-
-        .gallery-item .label {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 16px;
-            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-            transform: translateY(100%);
-            transition: transform 0.4s ease;
-        }
-
-        .gallery-item:hover .label {
-            transform: translateY(0);
-        }
-
-        .gallery-item.tall {
-            grid-row: span 2;
-        }
-
-        .gallery-item.wide {
-            grid-column: span 2;
-        }
-
-        @media (max-width: 1024px) {
-            .gallery-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .gallery-grid {
-                grid-template-columns: 1fr;
-            }
-            .gallery-item.tall,
-            .gallery-item.wide {
-                grid-row: span 1;
-                grid-column: span 1;
-            }
-            .section {
-                padding: 60px 20px;
-            }
-            .section-header h2 {
-                font-size: 32px;
-            }
-        }
-
-        /* ==========================================
-           TESTIMONIOS
-        ========================================== */
-        .testimonials-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-        }
-
-        .testimonial-card {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            padding: 30px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .testimonial-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(249, 115, 22, 0.2);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .testimonial-card .stars {
-            color: var(--orange);
-            font-size: 18px;
-            margin-bottom: 12px;
-            letter-spacing: 3px;
-        }
-
-        .testimonial-card blockquote {
-            color: #e0e0e0;
-            font-size: 15px;
-            line-height: 1.7;
-            margin-bottom: 16px;
-            font-style: italic;
-        }
-
-        .testimonial-card .author {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .testimonial-card .author .avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: white;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .testimonial-card .author .name {
-            color: white;
-            font-weight: 600;
-            font-size: 15px;
-        }
-
-        .testimonial-card .author .role {
-            color: #a0a0a0;
-            font-size: 13px;
-        }
-
-        /* ==========================================
-           CTA
-        ========================================== */
-        .cta-section {
-            padding: 80px 40px;
-            background: linear-gradient(135deg, #1a1a1a, #0d0d0d);
-            border-top: 1px solid rgba(249, 115, 22, 0.1);
-            border-bottom: 1px solid rgba(249, 115, 22, 0.1);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 50%, rgba(249, 115, 22, 0.05) 0%, transparent 50%);
-            animation: pulseGlow 10s ease-in-out infinite;
-        }
-
-        @keyframes pulseGlow {
-            0%,
-            100% {
-                transform: scale(1);
-                opacity: 0.5;
-            }
-            50% {
-                transform: scale(1.2);
-                opacity: 1;
-            }
-        }
-
-        .cta-content {
-            max-width: 700px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
-
-        .cta-content h2 {
-            font-family: 'Instrument Sans', sans-serif;
-            font-size: 42px;
-            color: white;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .cta-content h2 span {
-            color: var(--orange);
-        }
-
-        .cta-content p {
-            color: #a0a0a0;
-            font-size: 16px;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-
-        .cta-content .btn-group {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 768px) {
-            .cta-section {
-                padding: 60px 20px;
-            }
-            .cta-content h2 {
-                font-size: 32px;
-            }
-        }
-
-        /* ==========================================
-           FOOTER
-        ========================================== */
-        .footer {
-            padding: 40px 60px;
-            max-width: 1400px;
-            margin: 0 auto;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .footer .logo {
-            font-size: 22px;
-            font-weight: 700;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .footer .logo span {
-            color: var(--orange);
-        }
-
-        .footer .logo .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: white;
-        }
-
-        .footer .text {
-            color: #a0a0a0;
-            font-size: 13px;
-        }
-
-        .footer .social {
-            display: flex;
-            gap: 16px;
-        }
-
-        .footer .social a {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #a0a0a0;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-size: 18px;
-        }
-
-        .footer .social a:hover {
-            color: var(--orange);
-            background: rgba(249, 115, 22, 0.1);
-            border-color: var(--orange);
-            transform: translateY(-3px);
-        }
-
-        @media (max-width: 768px) {
-            .footer {
-                flex-direction: column;
-                text-align: center;
-                padding: 30px 20px;
-            }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--black);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--orange);
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--orange-dark);
+            --naranja: #f97316;
+            --naranja-oscuro: #c2410c;
+            --crema: #fff7ed;
+            --verde: #15803d;
+            --tinta: #1c1917;
+            --gris: #57534e;
+            --borde: #f1e7dc;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+        body { font-family: 'Instrument Sans', 'Segoe UI', sans-serif; background: #fff; color: var(--tinta); line-height: 1.6; }
+        img { display: block; max-width: 100%; }
+        a { color: inherit; text-decoration: none; }
+
+        .contenedor { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+        /* Navegación */
+        .nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, .95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--borde); }
+        .nav .contenedor { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+        .nav-logo img { height: 56px; width: auto; }
+        .nav-enlaces { display: flex; align-items: center; gap: 28px; font-size: 15px; font-weight: 500; }
+        .nav-enlaces a:not(.boton):hover { color: var(--naranja-oscuro); }
+        .nav-boton { display: none; background: none; border: 0; font-size: 24px; color: var(--tinta); cursor: pointer; padding: 8px; }
+
+        /* Botones */
+        .boton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 15px; transition: background .2s, color .2s, border-color .2s; }
+        .boton-principal { background: var(--naranja-oscuro); color: #fff; }
+        .boton-principal:hover { background: #9a3412; }
+        .boton-secundario { background: #fff; color: var(--tinta); border: 1.5px solid #d6d3d1; }
+        .boton-secundario:hover { border-color: var(--naranja-oscuro); color: var(--naranja-oscuro); }
+        .boton-whatsapp { background: var(--verde); color: #fff; }
+        .boton-whatsapp:hover { background: #166534; }
+        .botones { display: flex; flex-wrap: wrap; gap: 12px; }
+
+        /* Portada */
+        .portada { background: linear-gradient(180deg, var(--crema), #fff); padding: 56px 0 72px; }
+        .portada .contenedor { display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: center; }
+        .portada-etiqueta { display: inline-block; color: var(--verde); font-weight: 600; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 12px; }
+        .portada h1 { font-family: 'Lobster', 'Instrument Sans', cursive; font-weight: 400; font-size: clamp(40px, 5.5vw, 64px); line-height: 1.1; color: var(--naranja-oscuro); margin-bottom: 18px; }
+        .portada p { color: var(--gris); font-size: 18px; margin-bottom: 28px; }
+        .portada-imagen { border-radius: 20px; overflow: hidden; box-shadow: 0 24px 60px rgba(120, 53, 15, .18); aspect-ratio: 4 / 3; }
+        .portada-imagen img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Secciones */
+        .seccion { padding: 80px 0; }
+        .seccion-crema { background: var(--crema); }
+        .seccion-cabecera { max-width: 640px; margin: 0 auto 44px; text-align: center; }
+        .seccion-cabecera h2 { font-family: 'Lobster', 'Instrument Sans', cursive; font-weight: 400; font-size: clamp(30px, 4vw, 42px); color: var(--naranja-oscuro); margin-bottom: 8px; }
+        .seccion-cabecera p { color: var(--gris); }
+        .rejilla { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+        /* Tarjetas */
+        .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 16px; overflow: hidden; }
+        .tarjeta-imagen { aspect-ratio: 16 / 10; background: var(--crema); display: flex; align-items: center; justify-content: center; color: #fdba74; font-size: 40px; }
+        .tarjeta-imagen img { width: 100%; height: 100%; object-fit: cover; }
+        .tarjeta-foto { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; }
+        .tarjeta-cuerpo { padding: 20px; }
+        .tarjeta h3 { font-size: 19px; margin-bottom: 4px; }
+        .tarjeta p { color: var(--gris); font-size: 15px; }
+
+        /* Platos */
+        .platos { grid-template-columns: repeat(4, 1fr); }
+        .plato-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+        .plato-fila h3 { font-size: 16px; }
+        .precio { color: var(--naranja-oscuro); font-weight: 700; white-space: nowrap; }
+        .centrado { display: flex; justify-content: center; margin-top: 36px; }
+
+        /* Galería */
+        .galeria { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px; gap: 14px; }
+        .galeria figure { position: relative; border-radius: 14px; overflow: hidden; }
+        .galeria figure:first-child { grid-column: span 2; grid-row: span 2; }
+        .galeria img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
+        .galeria figure:hover img { transform: scale(1.04); }
+        .galeria figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 14px 10px; color: #fff; font-weight: 600; font-size: 14px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+
+        /* Testimonios */
+        .testimonio { padding: 24px; }
+        .testimonio blockquote { color: var(--gris); margin-bottom: 14px; }
+        .testimonio strong { display: block; }
+        .testimonio span { color: var(--gris); font-size: 14px; }
+
+        /* Llamado final */
+        .llamado { background: var(--naranja-oscuro); color: #fff; text-align: center; padding: 64px 0; }
+        .llamado h2 { font-family: 'Lobster', 'Instrument Sans', cursive; font-weight: 400; font-size: clamp(28px, 4vw, 40px); margin-bottom: 8px; }
+        .llamado p { margin-bottom: 24px; }
+        .llamado .botones { justify-content: center; }
+        .llamado .boton-principal { background: #fff; color: var(--naranja-oscuro); }
+        .llamado .boton-principal:hover { background: var(--crema); }
+
+        /* Pie: el logo original luce sobre negro */
+        .pie { background: #000; color: #d6d3d1; padding: 40px 0; font-size: 14px; }
+        .pie .contenedor { display: grid; grid-template-columns: auto 1fr auto; gap: 32px; align-items: center; }
+        .pie-logo { width: 150px; }
+        .pie-datos p { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .pie-datos i { color: var(--naranja); width: 16px; }
+        .pie-redes { display: flex; gap: 10px; justify-content: flex-end; }
+        .pie-redes a { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #1c1917; color: #fff; }
+        .pie-redes a:hover { background: var(--naranja-oscuro); }
+        .pie-legal { border-top: 1px solid #292524; margin-top: 24px; padding-top: 16px; text-align: center; color: #a8a29e; }
+
+        @media (max-width: 960px) {
+            .portada .contenedor { grid-template-columns: 1fr; gap: 32px; }
+            .rejilla, .platos { grid-template-columns: repeat(2, 1fr); }
+            .galeria { grid-template-columns: repeat(2, 1fr); }
+            .nav-boton { display: block; }
+            .nav-enlaces { display: none; position: absolute; top: 76px; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 4px; background: #fff; padding: 12px 24px 20px; border-bottom: 1px solid var(--borde); }
+            .nav-enlaces.abierto { display: flex; }
+            .nav-enlaces a { padding: 10px 0; }
+            .pie .contenedor { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+            .pie-datos p { justify-content: center; }
+        }
+
+        @media (max-width: 560px) {
+            .rejilla, .platos { grid-template-columns: 1fr; }
+            .seccion { padding: 56px 0; }
+            .botones .boton { width: 100%; }
         }
     </style>
 </head>
 <body>
+    @php($whatsapp = $contenido['whatsapp'] ? 'https://wa.me/'.$contenido['whatsapp'] : null)
 
-    <!-- ==========================================
-         NAVEGACIÓN
-    ========================================== -->
-    <nav class="navbar" id="navbar">
-        <a href="#" class="logo">
-            <span class="logo-icon">🏠</span>
-            Casa <span>Blanca</span>
-        </a>
-        <div class="nav-links" id="navLinks">
-            <a href="#features">Instalaciones</a>
-            <a href="#menu">Menú</a>
-            <a href="#gallery">Galería</a>
-            <a href="#testimonials">Testimonios</a>
-            @if (Route::has('login'))
+    <nav class="nav">
+        <div class="contenedor">
+            <a href="{{ url('/') }}" class="nav-logo"><img src="{{ asset('img/logo-claro.webp') }}" alt="Casa Blanca, Restaurante Campestre, Poroto"></a>
+            <div class="nav-enlaces" id="navEnlaces">
+                @if($instalaciones->isNotEmpty())<a href="#instalaciones">Instalaciones</a>@endif
+                @if($destacados->isNotEmpty())<a href="#platos">Platos</a>@endif
+                @if($galeria->isNotEmpty())<a href="#galeria">Galería</a>@endif
+                @if($testimonios->isNotEmpty())<a href="#testimonios">Testimonios</a>@endif
+                <a href="{{ route('carta.index') }}">Carta y Pedido</a>
                 @auth
-                    <a href="{{ url('/dashboard') }}" class="btn-nav">
-                        <i class="fas fa-user"></i> Dashboard
-                    </a>
+                    <a href="{{ url('/dashboard') }}" class="boton boton-principal"><i class="fas fa-user"></i> Mi panel</a>
                 @else
-                    <a href="{{ route('login') }}" class="btn-nav">
-                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                    </a>
+                    <a href="{{ route('login') }}" class="boton boton-secundario"><i class="fas fa-sign-in-alt"></i> Iniciar sesión</a>
                 @endauth
-            @endif
+            </div>
+            <button class="nav-boton" id="navBoton" aria-label="Abrir menú" aria-expanded="false"><i class="fas fa-bars"></i></button>
         </div>
-        <button class="menu-toggle" id="menuToggle" aria-label="Menú">
-            <i class="fas fa-bars"></i>
-        </button>
     </nav>
 
-    <!-- ==========================================
-         HERO
-    ========================================== -->
-    <section class="hero">
-        <div class="hero-content">
-            <div class="hero-text">
-                <span class="badge"><i class="fas fa-crown"></i> Club Campestre</span>
-                <h1>Bienvenido a<br><span class="highlight">Casa Blanca</span></h1>
-                <p>
-                    <i class="fas fa-swimmer" style="color:var(--orange);"></i> Disfruta de nuestra piscina,
-                    <i class="fas fa-utensils" style="color:var(--orange);"></i> deléitate con nuestra gastronomía
-                    y vive momentos inolvidables en familia.
-                </p>
-                <div class="btn-group">
-                    <a href="#" class="btn-primary">
-                        <i class="fas fa-calendar-check"></i> Reservar Mesa
-                    </a>
-                    <a href="#" class="btn-secondary">
-                        <i class="fas fa-play-circle"></i> Ver Instalaciones
-                    </a>
+    <header class="portada">
+        <div class="contenedor">
+            <div>
+                @if($contenido['hero_etiqueta'])<span class="portada-etiqueta">{{ $contenido['hero_etiqueta'] }}</span>@endif
+                <h1>{{ $contenido['hero_titulo'] }}</h1>
+                @if($contenido['hero_texto'])<p>{{ $contenido['hero_texto'] }}</p>@endif
+                <div class="botones">
+                    <a href="{{ route('carta.index') }}" class="boton boton-principal"><i class="fas fa-utensils"></i> Ver carta y pedir</a>
+                    @if($whatsapp)
+                        <a href="{{ $whatsapp }}" target="_blank" rel="noopener" class="boton boton-whatsapp"><i class="fab fa-whatsapp"></i> Reservar mesa</a>
+                    @elseif($instalaciones->isNotEmpty())
+                        <a href="#instalaciones" class="boton boton-secundario">Ver instalaciones</a>
+                    @endif
                 </div>
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <div class="stat-icon"><i class="fas fa-users"></i></div>
-                        <div class="stat-number">350<span>+</span></div>
-                        <div class="stat-label">Familias Socias</div>
+            </div>
+            <div class="portada-imagen">
+                <img src="{{ \App\Models\Contenido::urlImagen($contenido['hero_imagen']) }}" alt="Entrada de Casa Blanca">
+            </div>
+        </div>
+    </header>
+
+    <main>
+        @if($instalaciones->isNotEmpty())
+            <section id="instalaciones" class="seccion">
+                <div class="contenedor">
+                    <div class="seccion-cabecera">
+                        <h2>{{ $contenido['instalaciones_titulo'] }}</h2>
+                        <p>{{ $contenido['instalaciones_texto'] }}</p>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-icon"><i class="fas fa-utensils"></i></div>
-                        <div class="stat-number">45</div>
-                        <div class="stat-label">Platos en Menú</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Eventos al Año</div>
-                    </div>
-                </div>
-            </div>
-            <div class="hero-image">
-                <div class="hero-card big">
-                    <div class="icon">🏊</div>
-                    <div class="title">Piscina Principal</div>
-                    <div class="desc">Climatizada con jacuzzi</div>
-                </div>
-                <div class="hero-card">
-                    <div class="icon">🍽️</div>
-                    <div class="title">Restaurante</div>
-                    <div class="desc">Cocina casera</div>
-                </div>
-                <div class="hero-card">
-                    <div class="icon">🌴</div>
-                    <div class="title">Jardines</div>
-                    <div class="desc">Áreas verdes</div>
-                </div>
-                <div class="hero-card">
-                    <div class="icon">🍹</div>
-                    <div class="title">Bar</div>
-                    <div class="desc">Cócteles y snacks</div>
-                </div>
-                <div class="hero-card">
-                    <div class="icon">🎪</div>
-                    <div class="title">Eventos</div>
-                    <div class="desc">Celebraciones</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==========================================
-         INSTALACIONES
-    ========================================== -->
-    <section id="features" class="section">
-        <div class="section-header">
-            <span class="label"><i class="fas fa-star"></i> Nuestras Instalaciones</span>
-            <h2>Todo para tu <span>disfrute</span></h2>
-            <p>Espacios diseñados para que pases momentos inolvidables en familia y con amigos.</p>
-        </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="icon">🏊</div>
-                <h3>Piscina</h3>
-                <p>Piscina climatizada con área de chapoteo para niños, jacuzzi y zona de solárium con camastros.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🍽️</div>
-                <h3>Restaurante</h3>
-                <p>Cocina casera con los mejores ingredientes. Desde platos tradicionales hasta especialidades gourmet.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🌴</div>
-                <h3>Jardines</h3>
-                <p>Amplios jardines con zonas de descanso, ideal para paseos, lectura o simplemente relajarse.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🎪</div>
-                <h3>Salón de Eventos</h3>
-                <p>Espacio versátil para celebraciones familiares, cumpleaños, bodas y eventos empresariales.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">👨‍👩‍👧‍👦</div>
-                <h3>Zona Infantil</h3>
-                <p>Parque infantil con juegos seguros y monitores para que los más pequeños se diviertan.</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🍹</div>
-                <h3>Bar & Terraza</h3>
-                <p>Bar con amplia variedad de cócteles, jugos naturales y snacks para disfrutar al aire libre.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==========================================
-         MENÚ
-    ========================================== -->
-    <section id="menu" class="section" style="background:#0d0d0d; border-top:1px solid rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.03);">
-        <div class="section-header">
-            <span class="label"><i class="fas fa-utensils"></i> Nuestro Menú</span>
-            <h2>Delicias <span>gastronómicas</span></h2>
-            <p>Platos preparados con ingredientes frescos y mucho amor.</p>
-        </div>
-        <div class="menu-grid">
-            <div class="menu-item">
-                <span class="emoji">🥩</span>
-                <h4>Parrillada Mixta</h4>
-                <p class="desc">Carnes a la parrilla con guarniciones</p>
-                <span class="price">S/ 18.000</span>
-            </div>
-            <div class="menu-item">
-                <span class="emoji">🐟</span>
-                <h4>Pescado del Día</h4>
-                <p class="desc">Fresco, a la plancha con salsa de mariscos</p>
-                <span class="price">S/ 15.000</span>
-            </div>
-            <div class="menu-item">
-                <span class="emoji">🍝</span>
-                <h4>Pasta Alfredo</h4>
-                <p class="desc">Fetuccini con salsa cremosa y pollo</p>
-                <span class="price">S/ 12.000</span>
-            </div>
-            <div class="menu-item">
-                <span class="emoji">🥗</span>
-                <h4>Ensalada César</h4>
-                <p class="desc">Lechuga, pollo, parmesano y aderezo</p>
-                <span class="price">S/ 9.000</span>
-            </div>
-            <div class="menu-item">
-                <span class="emoji">🍔</span>
-                <h4>Hamburguesa Clásica</h4>
-                <p class="desc">Con queso, lechuga, tomate y papas</p>
-                <span class="price">S/ 10.000</span>
-            </div>
-            <div class="menu-item">
-                <span class="emoji">🍰</span>
-                <h4>Postres Caseros</h4>
-                <p class="desc">Tortas, pasteles y helados artesanales</p>
-                <span class="price">S/ 6.000</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==========================================
-         GALERÍA
-    ========================================== -->
-    <section id="gallery" class="section">
-        <div class="section-header">
-            <span class="label"><i class="fas fa-images"></i> Galería</span>
-            <h2>Nuestros <span>Espacios</span></h2>
-            <p>Cada rincón de Casa Blanca está pensado para tu bienestar.</p>
-        </div>
-        <div class="gallery-grid">
-            <div class="gallery-item tall">
-                <span class="emoji">🏊</span>
-                <span class="label">Piscina Principal</span>
-            </div>
-            <div class="gallery-item wide">
-                <span class="emoji">🍽️</span>
-                <span class="label">Restaurante</span>
-            </div>
-            <div class="gallery-item">
-                <span class="emoji">🌴</span>
-                <span class="label">Jardines</span>
-            </div>
-            <div class="gallery-item">
-                <span class="emoji">🍹</span>
-                <span class="label">Terraza Bar</span>
-            </div>
-            <div class="gallery-item">
-                <span class="emoji">🎪</span>
-                <span class="label">Salón de Eventos</span>
-            </div>
-            <div class="gallery-item">
-                <span class="emoji">👨‍👩‍👧‍👦</span>
-                <span class="label">Zona Infantil</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==========================================
-         TESTIMONIOS
-    ========================================== -->
-    <section id="testimonials" class="section" style="background:#0d0d0d; border-top:1px solid rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.03);">
-        <div class="section-header">
-            <span class="label"><i class="fas fa-quote-left"></i> Testimonios</span>
-            <h2>Lo que dicen <span>nuestros socios</span></h2>
-            <p>La experiencia de quienes ya disfrutan de Casa Blanca.</p>
-        </div>
-        <div class="testimonials-grid">
-            <div class="testimonial-card">
-                <div class="stars">★★★★★</div>
-                <blockquote>"La piscina es increíble y la comida del restaurante es deliciosa. Mis hijos se divierten muchísimo en la zona infantil."</blockquote>
-                <div class="author">
-                    <div class="avatar">MG</div>
-                    <div>
-                        <div class="name">María González</div>
-                        <div class="role">Socia desde 2022</div>
+                    <div class="rejilla">
+                        @foreach($instalaciones as $instalacion)
+                            <article class="tarjeta">
+                                <div class="tarjeta-imagen">
+                                    @if($instalacion->imagen)
+                                        <img src="{{ $instalacion->imagen_url }}" alt="{{ $instalacion->titulo }}" loading="lazy">
+                                    @else
+                                        <i class="fas fa-leaf"></i>
+                                    @endif
+                                </div>
+                                <div class="tarjeta-cuerpo">
+                                    <h3>{{ $instalacion->titulo }}</h3>
+                                    <p>{{ $instalacion->descripcion }}</p>
+                                </div>
+                            </article>
+                        @endforeach
                     </div>
                 </div>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars">★★★★★</div>
-                <blockquote>"Un lugar perfecto para compartir en familia. Los jardines son hermosos y el ambiente es muy acogedor."</blockquote>
-                <div class="author">
-                    <div class="avatar">JR</div>
-                    <div>
-                        <div class="name">Juan Rodríguez</div>
-                        <div class="role">Socio desde 2021</div>
+            </section>
+        @endif
+
+        @if($destacados->isNotEmpty())
+            <section id="platos" class="seccion seccion-crema">
+                <div class="contenedor">
+                    <div class="seccion-cabecera">
+                        <h2>{{ $contenido['platos_titulo'] }}</h2>
+                        <p>{{ $contenido['platos_texto'] }}</p>
+                    </div>
+                    <div class="rejilla platos">
+                        @foreach($destacados as $plato)
+                            <article class="tarjeta">
+                                <div class="tarjeta-imagen">
+                                    @if($plato->imagen)
+                                        <button type="button" class="tarjeta-foto" aria-label="Ver detalle de {{ $plato->nombre }}"
+                                                data-visor
+                                                data-visor-imagen="{{ asset('storage/'.$plato->imagen) }}"
+                                                data-visor-titulo="{{ $plato->nombre }}"
+                                                data-visor-precio="S/ {{ number_format($plato->precio_venta, 2) }}"
+                                                @if($plato->incluye) data-visor-incluye="{{ json_encode($plato->incluye) }}" @endif
+                                                data-visor-texto="{{ $plato->descripcion }}">
+                                            <img src="{{ asset('storage/'.$plato->imagen) }}" alt="" loading="lazy">
+                                        </button>
+                                    @else
+                                        <i class="fas fa-utensils"></i>
+                                    @endif
+                                </div>
+                                <div class="tarjeta-cuerpo plato-fila">
+                                    <h3>{{ $plato->nombre }}</h3>
+                                    <span class="precio">S/ {{ number_format($plato->precio_venta, 2) }}</span>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+                    <div class="centrado">
+                        <a href="{{ route('carta.index') }}" class="boton boton-principal">Ver la carta completa</a>
                     </div>
                 </div>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars">★★★★★</div>
-                <blockquote>"La atención es excelente y los precios son muy accesibles. Sin duda el mejor club campestre de la zona."</blockquote>
-                <div class="author">
-                    <div class="avatar">AL</div>
-                    <div>
-                        <div class="name">Ana López</div>
-                        <div class="role">Socia desde 2023</div>
+            </section>
+        @endif
+
+        @if($galeria->isNotEmpty())
+            <section id="galeria" class="seccion">
+                <div class="contenedor">
+                    <div class="seccion-cabecera">
+                        <h2>{{ $contenido['galeria_titulo'] }}</h2>
+                        <p>{{ $contenido['galeria_texto'] }}</p>
+                    </div>
+                    <div class="galeria">
+                        @foreach($galeria as $foto)
+                            <figure>
+                                <img src="{{ $foto->imagen_url }}" alt="{{ $foto->titulo }}" loading="lazy">
+                                <figcaption>{{ $foto->titulo }}</figcaption>
+                            </figure>
+                        @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-    </section>
+            </section>
+        @endif
 
-    <!-- ==========================================
-         CTA
-    ========================================== -->
-    <section class="cta-section">
-        <div class="cta-content">
-            <h2>¿Listo para vivir la <span>experiencia</span> Casa Blanca?</h2>
-            <p><i class="fas fa-heart" style="color:var(--orange);"></i> Únete a nuestra familia y disfruta de días inolvidables junto a los tuyos.</p>
-            <div class="btn-group">
-                <a href="#" class="btn-primary">
-                    <i class="fas fa-calendar-plus"></i> Reservar Mesa
-                </a>
-                <a href="#" class="btn-secondary">
-                    <i class="fas fa-info-circle"></i> Conocer Más
-                </a>
-            </div>
-        </div>
-    </section>
+        @if($testimonios->isNotEmpty())
+            <section id="testimonios" class="seccion seccion-crema">
+                <div class="contenedor">
+                    <div class="seccion-cabecera">
+                        <h2>{{ $contenido['testimonios_titulo'] }}</h2>
+                    </div>
+                    <div class="rejilla">
+                        @foreach($testimonios as $testimonio)
+                            <article class="tarjeta testimonio">
+                                <blockquote>“{{ $testimonio->descripcion }}”</blockquote>
+                                <strong>{{ $testimonio->titulo }}</strong>
+                                @if($testimonio->detalle)<span>{{ $testimonio->detalle }}</span>@endif
+                            </article>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+        @endif
 
-    <!-- ==========================================
-         FOOTER
-    ========================================== -->
-    <footer class="footer">
-        <div>
-            <div class="logo">
-                <span class="logo-icon">🏠</span>
-                Casa <span>Blanca</span>
+        <section class="llamado">
+            <div class="contenedor">
+                <h2>{{ $contenido['cta_titulo'] }}</h2>
+                <p>{{ $contenido['cta_texto'] }}</p>
+                <div class="botones">
+                    <a href="{{ route('carta.index') }}" class="boton boton-principal"><i class="fas fa-utensils"></i> Hacer mi prepedido</a>
+                    @if($whatsapp)
+                        <a href="{{ $whatsapp }}" target="_blank" rel="noopener" class="boton boton-whatsapp"><i class="fab fa-whatsapp"></i> Escríbenos</a>
+                    @endif
+                </div>
             </div>
-            <div class="text" style="margin-top:4px;">Club Campestre</div>
+        </section>
+    </main>
+
+    <footer class="pie">
+        <div class="contenedor">
+            <img src="{{ asset('img/logo.webp') }}" alt="" class="pie-logo">
+            <div class="pie-datos">
+                @if($contenido['direccion'])<p><i class="fas fa-map-marker-alt"></i> {{ $contenido['direccion'] }}</p>@endif
+                @if($contenido['horario'])<p><i class="fas fa-clock"></i> {{ $contenido['horario'] }}</p>@endif
+                @if($contenido['telefono'])<p><i class="fas fa-phone"></i> {{ $contenido['telefono'] }}</p>@endif
+            </div>
+            <div class="pie-redes">
+                @if($contenido['instagram'])<a href="{{ $contenido['instagram'] }}" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>@endif
+                @if($contenido['facebook'])<a href="{{ $contenido['facebook'] }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>@endif
+                @if($contenido['youtube'])<a href="{{ $contenido['youtube'] }}" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>@endif
+                @if($whatsapp)<a href="{{ $whatsapp }}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>@endif
+            </div>
         </div>
-        <div class="text">
-            <i class="far fa-copyright"></i> {{ date('Y') }} Casa Blanca Club. Todos los derechos reservados.
-        </div>
-        <div class="social">
-            <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-            <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-            <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
-            <a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        <div class="contenedor">
+            <p class="pie-legal" style="grid-column: 1 / -1;">© {{ date('Y') }} Casa Blanca, Restaurante Campestre. Todos los derechos reservados. · <a href="{{ asset('creditos-fotos.txt') }}" style="text-decoration: underline;">Créditos de fotos</a></p>
         </div>
     </footer>
 
-    <!-- ==========================================
-         SCRIPTS
-    ========================================== -->
+    @include('partials.visor-producto')
+
     <script>
-        // Menú hamburguesa
-        const menuToggle = document.getElementById('menuToggle');
-        const navLinks = document.getElementById('navLinks');
+        const navBoton = document.getElementById('navBoton');
+        const navEnlaces = document.getElementById('navEnlaces');
 
-        menuToggle.addEventListener('click', function() {
-            navLinks.classList.toggle('open');
-            const icon = this.querySelector('i');
-            if (navLinks.classList.contains('open')) {
-                icon.className = 'fas fa-times';
-            } else {
-                icon.className = 'fas fa-bars';
-            }
-        });
-
-        // Cerrar menú al hacer click en un enlace (móvil)
-        document.querySelectorAll('.nav-links a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    navLinks.classList.remove('open');
-                    document.querySelector('.menu-toggle i').className = 'fas fa-bars';
-                }
-            });
+        navBoton.addEventListener('click', function () {
+            const abierto = navEnlaces.classList.toggle('abierto');
+            navBoton.setAttribute('aria-expanded', abierto);
+            navBoton.querySelector('i').className = abierto ? 'fas fa-times' : 'fas fa-bars';
         });
     </script>
 </body>

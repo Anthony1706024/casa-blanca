@@ -130,21 +130,21 @@
                             @forelse($productos as $producto)
                             <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
                                 <td class="py-3">
-                                    <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" 
-                                         class="producto-imagen w-10 h-10 md:w-12 md:h-12">
+                                    <img src="{{ $producto->imagen_mini_url }}" alt="{{ $producto->nombre }}" loading="lazy" 
+                                         class="producto-imagen w-10 h-10 md:w-12 md:h-12"@if($producto->imagen) role="button" tabindex="0" data-visor data-visor-texto="{{ $producto->descripcion }}" data-visor-imagen="{{ $producto->imagen_url }}" data-visor-titulo="{{ $producto->nombre }}" data-visor-precio="S/ {{ number_format($producto->precio_venta ?? 0, 2) }}"@endif>
                                 </td>
                                 <td class="py-3">
                                     <span class="text-orange-600 font-mono text-xs md:text-sm font-medium">{{ $producto->codigo }}</span>
                                 </td>
-                                <td class="py-3 text-black font-medium text-xs md:text-sm">{{ $producto->nombre }}</td>
+                                <td class="py-3 text-black font-medium text-xs md:text-sm">{{ $producto->nombre }}@if($producto->esPlato())<span class="block text-xs font-normal text-orange-600"><i class="fas fa-utensils mr-1"></i>Plato con receta</span>@endif</td>
                                 <td class="py-3 text-gray-600 text-xs md:text-sm hidden sm:table-cell">{{ $producto->categoria->nombre ?? 'Sin categoría' }}</td>
                                 <td class="py-3 text-gray-500 text-xs md:text-sm hidden lg:table-cell">{{ $producto->subcategoria->nombre ?? '-' }}</td>
                                 <td class="py-3 text-center">
                                     <span class="px-2 md:px-3 py-1 rounded-full text-xs font-semibold 
-                                        {{ $producto->stock <= 5 ? 'badge-stock-bajo' : 'badge-stock-normal' }}">
-                                        {{ $producto->stock }}
+                                        {{ $producto->disponible <= 5 ? 'badge-stock-bajo' : 'badge-stock-normal' }}">
+                                        {{ $producto->disponible }}
                                     </span>
-                                    @if($producto->stock <= 5)
+                                    @if($producto->disponible <= 5)
                                         <span class="text-red-500 text-xs ml-2 hidden md:inline font-medium">¡Bajo!</span>
                                     @endif
                                 </td>
@@ -153,11 +153,13 @@
                                 </td>
                                 <td class="py-3 text-center">
                                     <div class="flex items-center justify-center gap-1 md:gap-2">
+                                        @unless($producto->esPlato())
                                         <button onclick="openStockModal({{ $producto->id }}, '{{ $producto->nombre }}', {{ $producto->stock }})"
                                                 class="text-green-600 hover:text-green-700 transition px-2 md:px-3 py-1 rounded bg-green-50 hover:bg-green-100 text-xs md:text-sm font-medium">
                                             <i class="fas fa-edit"></i>
                                             <span class="hidden md:inline ml-1">Stock</span>
                                         </button>
+                                        @endunless
                                         <a href="{{ route('admin.almacen.edit', $producto->id) }}" 
                                            class="text-blue-600 hover:text-blue-700 transition px-2 md:px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 text-xs md:text-sm font-medium">
                                             <i class="fas fa-pen"></i>
@@ -225,6 +227,9 @@
             </form>
         </div>
     </div>
+
+    @include('partials.visor-producto')
+
 
     <script>
         function openStockModal(id, nombre, stock) {

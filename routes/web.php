@@ -4,14 +4,28 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Mozo\DashboardController as MozoDashboard;
 use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
 use App\Http\Controllers\ProfileController;
+use App\Models\SitioItem;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\UsuarioController; // 👈 AGREGAR ESTA LÍNEA
 use App\Http\Controllers\Admin\AlmacenController;
 use App\Http\Controllers\Admin\SubcategoriaController;
+use App\Http\Controllers\Admin\InsumoController;
+use App\Http\Controllers\Admin\VentaController;
+use App\Http\Controllers\Mozo\PedidoController as MozoPedido;
+use App\Http\Controllers\Cajera\CobroController;
+use App\Http\Controllers\Admin\PrecioController;
+use App\Http\Controllers\Admin\ContenidoController;
+use App\Http\Controllers\CartaController;
+use App\Http\Controllers\InicioController;
+use App\Http\Controllers\ReciboController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [InicioController::class, 'index']);
+
+// ============================================
+// CARTA PÚBLICA Y PREPEDIDO DEL CLIENTE
+// ============================================
+Route::get('/carta', [CartaController::class, 'index'])->name('carta.index');
+Route::post('/carta/pedido', [CartaController::class, 'store'])->middleware('throttle:10,1')->name('carta.store');
 
 // ============================================
 // REDIRECCIÓN SEGÚN ROL
@@ -70,16 +84,64 @@ Route::middleware(['auth', 'checkrole:admin'])->prefix('admin')->name('admin.')-
     Route::post('/subcategorias', [AlmacenController::class, 'subcategoriasStore'])->name('subcategorias.store');
     Route::delete('/subcategorias/{id}', [AlmacenController::class, 'subcategoriasDestroy'])->name('subcategorias.destroy');
     Route::get('/subcategorias/por-categoria/{categoria_id}', [AlmacenController::class, 'getSubcategorias'])->name('subcategorias.por-categoria');
+
+    // Insumos
+    Route::get('/insumos', [InsumoController::class, 'index'])->name('insumos.index');
+    Route::get('/insumos/crear', [InsumoController::class, 'create'])->name('insumos.create');
+    Route::post('/insumos', [InsumoController::class, 'store'])->name('insumos.store');
+    Route::get('/insumos/categorias', [InsumoController::class, 'categoriasIndex'])->name('insumos.categorias.index');
+    Route::post('/insumos/categorias', [InsumoController::class, 'categoriasStore'])->name('insumos.categorias.store');
+    Route::delete('/insumos/categorias/{id}', [InsumoController::class, 'categoriasDestroy'])->name('insumos.categorias.destroy');
+    Route::get('/insumos/{id}/editar', [InsumoController::class, 'edit'])->name('insumos.edit');
+    Route::put('/insumos/{id}', [InsumoController::class, 'update'])->name('insumos.update');
+    Route::post('/insumos/{id}/ingreso', [InsumoController::class, 'ingreso'])->name('insumos.ingreso');
+    Route::delete('/insumos/{id}', [InsumoController::class, 'destroy'])->name('insumos.destroy');
+
+    // Ventas
+    Route::get('/ventas', [VentaController::class, 'index'])->name('ventas.index');
+
+    // Precios
+    Route::get('/precios', [PrecioController::class, 'index'])->name('precios.index');
+    Route::put('/precios', [PrecioController::class, 'actualizar'])->name('precios.actualizar');
+    Route::get('/precios/historial', [PrecioController::class, 'historial'])->name('precios.historial');
+    Route::get('/precios/ventas', [PrecioController::class, 'ventas'])->name('precios.ventas');
+
+    // Contenido de la página web
+    Route::get('/contenido', [ContenidoController::class, 'index'])->name('contenido.index');
+    Route::put('/contenido', [ContenidoController::class, 'guardar'])->name('contenido.guardar');
+    Route::get('/contenido/secciones/{tipo}', [ContenidoController::class, 'items'])->whereIn('tipo', array_keys(SitioItem::TIPOS))->name('contenido.items');
+    Route::post('/contenido/secciones/{tipo}', [ContenidoController::class, 'itemStore'])->whereIn('tipo', array_keys(SitioItem::TIPOS))->name('contenido.items.store');
+    Route::get('/contenido/elementos/{id}/editar', [ContenidoController::class, 'itemEdit'])->name('contenido.items.edit');
+    Route::put('/contenido/elementos/{id}', [ContenidoController::class, 'itemUpdate'])->name('contenido.items.update');
+    Route::delete('/contenido/elementos/{id}', [ContenidoController::class, 'itemDestroy'])->name('contenido.items.destroy');
 });
 
 // 2. MOZO - solo role_id = 2
 Route::middleware(['auth', 'checkrole:mozo'])->prefix('mozo')->name('mozo.')->group(function () {
     Route::get('/dashboard', [MozoDashboard::class, 'index'])->name('dashboard');
+
+    // Pedidos
+    Route::get('/pedidos', [MozoPedido::class, 'index'])->name('pedidos.index');
+    Route::get('/pedidos/crear', [MozoPedido::class, 'create'])->name('pedidos.create');
+    Route::post('/pedidos', [MozoPedido::class, 'store'])->name('pedidos.store');
+    Route::post('/pedidos/{id}/anular', [MozoPedido::class, 'anular'])->name('pedidos.anular');
 });
 
 // 3. CAJERA - solo role_id = 3
 Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.')->group(function () {
     Route::get('/dashboard', [CajeraDashboard::class, 'index'])->name('dashboard');
+
+    // Cobros
+    Route::get('/pedidos', [CobroController::class, 'index'])->name('pedidos.index');
+    Route::get('/pedidos/{id}', [CobroController::class, 'show'])->name('pedidos.show');
+    Route::post('/pedidos/{id}/cobrar', [CobroController::class, 'cobrar'])->name('pedidos.cobrar');
+    Route::post('/pedidos/{id}/anular', [CobroController::class, 'anular'])->name('pedidos.anular');
+    Route::get('/recibos', [CobroController::class, 'recibos'])->name('recibos.index');
+});
+
+// Recibo imprimible: lo emite caja y lo consulta el administrador
+Route::middleware(['auth', 'checkrole:admin,cajera'])->group(function () {
+    Route::get('/recibos/{id}', [ReciboController::class, 'show'])->name('recibos.show');
 });
 
 // ============================================

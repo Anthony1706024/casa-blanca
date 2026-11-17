@@ -11,15 +11,147 @@
 
     <style>
         body {
-            background: #0d0d0d;
+            background: #f8fafc;
             font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1a1a1a;
         }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0d0d0d; }
-        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ea580c; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f97316;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ea580c;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .fade-in { animation: fadeIn 0.5s ease; }
+        
+        /* Estilos para formulario en fondo blanco */
+        .form-container {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-container label {
+            color: #374151;
+            font-weight: 600;
+        }
+        
+        .form-input {
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            color: #1a1a1a;
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            border-color: #f97316;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+            background: #ffffff;
+        }
+        
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+        
+        .form-select {
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            color: #1a1a1a;
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 20px;
+        }
+        
+        .form-select:focus {
+            border-color: #f97316;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+            background-color: #ffffff;
+        }
+        
+        .form-select option {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+        
+        .btn-cancel {
+            background: #f3f4f6;
+            color: #374151;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cancel:hover {
+            background: #e5e7eb;
+            color: #1a1a1a;
+        }
+        
+        .btn-submit {
+            background: #f97316;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background: #ea580c;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+        
+        .hint-text {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+        
+        .header-title {
+            color: #1a1a1a;
+        }
+        
+        .header-subtitle {
+            color: #6b7280;
+        }
+        
+        .back-link {
+            color: #6b7280;
+        }
+        
+        .back-link:hover {
+            color: #1a1a1a;
+        }
     </style>
 </head>
 <body>
@@ -31,20 +163,20 @@
             <!-- Header -->
             <div class="flex justify-between items-center mb-8">
                 <div>
-                    <h1 class="text-3xl font-bold text-white">
+                    <h1 class="text-3xl font-bold header-title">
                         <i class="fas fa-user-edit text-orange-500 mr-3"></i>
                         Editar Usuario
                     </h1>
-                    <p class="text-gray-400 mt-1">Modifica la información del usuario</p>
+                    <p class="header-subtitle mt-1">Modifica la información del usuario</p>
                 </div>
                 <a href="{{ route('admin.usuarios.index') }}" 
-                   class="text-gray-400 hover:text-white transition flex items-center gap-2">
+                   class="back-link transition flex items-center gap-2 font-medium">
                     <i class="fas fa-arrow-left"></i> Volver
                 </a>
             </div>
 
             <!-- Formulario -->
-            <div class="bg-[#1a1a1a] rounded-lg p-6 border border-orange-500/20">
+            <div class="form-container p-6">
                 <form method="POST" action="{{ route('admin.usuarios.update', $usuario->id) }}">
                     @csrf
                     @method('PUT')
@@ -52,42 +184,45 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Nombre -->
                         <div>
-                            <label class="block text-gray-300 mb-2 font-semibold">Nombre completo</label>
+                            <label class="block mb-2">Nombre completo</label>
                             <input type="text" name="name" value="{{ old('name', $usuario->name) }}" 
-                                   class="w-full px-4 py-3 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none transition"
+                                   class="form-input"
                                    placeholder="Ej: Juan Pérez" required>
                             @error('name')
-                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                <p class="error-message">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Email -->
                         <div>
-                            <label class="block text-gray-300 mb-2 font-semibold">Correo electrónico</label>
+                            <label class="block mb-2">Correo electrónico</label>
                             <input type="email" name="email" value="{{ old('email', $usuario->email) }}" 
-                                   class="w-full px-4 py-3 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none transition"
+                                   class="form-input"
                                    placeholder="Ej: usuario@casablanca.com" required>
                             @error('email')
-                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                <p class="error-message">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Contraseña (opcional) -->
                         <div>
-                            <label class="block text-gray-300 mb-2 font-semibold">Nueva Contraseña</label>
+                            <label class="block mb-2">Nueva Contraseña</label>
                             <input type="password" name="password" 
-                                   class="w-full px-4 py-3 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none transition"
+                                   class="form-input"
                                    placeholder="Dejar en blanco para no cambiar">
                             @error('password')
-                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                <p class="error-message">{{ $message }}</p>
                             @enderror
-                            <p class="text-gray-500 text-xs mt-1">Mínimo 6 caracteres</p>
+                            <p class="hint-text">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Mínimo 6 caracteres
+                            </p>
                         </div>
 
                         <!-- Rol -->
                         <div>
-                            <label class="block text-gray-300 mb-2 font-semibold">Rol</label>
-                            <select name="role_id" class="w-full px-4 py-3 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none transition" required>
+                            <label class="block mb-2">Rol</label>
+                            <select name="role_id" class="form-select" required>
                                 <option value="">Seleccionar rol</option>
                                 @foreach($roles as $rol)
                                     <option value="{{ $rol->id }}" {{ old('role_id', $usuario->role_id) == $rol->id ? 'selected' : '' }}>
@@ -96,18 +231,18 @@
                                 @endforeach
                             </select>
                             @error('role_id')
-                                <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
+                                <p class="error-message">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
 
                     <div class="flex justify-end gap-4 mt-8">
                         <a href="{{ route('admin.usuarios.index') }}" 
-                           class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition">
+                           class="btn-cancel">
                             Cancelar
                         </a>
                         <button type="submit" 
-                                class="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition flex items-center gap-2">
+                                class="btn-submit flex items-center gap-2">
                             <i class="fas fa-save"></i> Actualizar Usuario
                         </button>
                     </div>
