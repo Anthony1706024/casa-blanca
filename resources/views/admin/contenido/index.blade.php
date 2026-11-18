@@ -20,6 +20,10 @@
         @endforeach
     </div>
 
+    <p class="bg-orange-50 border border-orange-100 text-orange-800 rounded-lg px-4 py-3 text-sm mb-6">
+        <i class="fas fa-lightbulb mr-1"></i> En los títulos, escribe una parte entre <strong>*asteriscos*</strong> para que salga en cursiva y en color. Ejemplo: <code>Una casa de campo para *disfrutar* en familia.</code>
+    </p>
+
     <form method="POST" action="{{ route('admin.contenido.guardar') }}" enctype="multipart/form-data">
         @csrf @method('PUT')
 
@@ -33,7 +37,11 @@
                         @if($campo[2] === 'parrafo')
                             <textarea id="{{ $clave }}" name="{{ $clave }}" rows="3" class="campo">{{ old($clave, $valores[$clave]) }}</textarea>
                         @elseif($campo[2] === 'imagen')
-                            <img src="{{ \App\Models\Contenido::urlImagen($valores[$clave]) }}" alt="" class="h-40 rounded-lg border border-gray-200 object-cover mb-2">
+                            @if($valores[$clave])
+                                <img src="{{ \App\Models\Contenido::urlImagen($valores[$clave]) }}" alt="" class="h-40 rounded-lg border border-gray-200 object-cover mb-2">
+                            @else
+                                <p class="text-gray-500 text-sm mb-2"><i class="fas fa-image mr-1"></i> Sin imagen: se usa la de la portada.</p>
+                            @endif
                             <input type="file" id="{{ $clave }}" name="{{ $clave }}" accept="image/*" class="campo">
                             <p class="text-gray-400 text-xs mt-1">JPG, PNG o WEBP, máximo 8MB. Déjalo vacío para conservar la actual.</p>
                         @else

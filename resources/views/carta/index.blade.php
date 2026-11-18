@@ -22,7 +22,9 @@
             <a href="{{ url('/') }}" class="flex items-center gap-3">
                 <img src="/img/logo-claro.webp" alt="Casa Blanca" class="h-12 w-auto">
             </a>
-            <span class="text-orange-500 text-sm font-semibold">Nuestra carta</span>
+            <a href="{{ asset('docs/carta-casa-blanca.pdf') }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 border border-orange-200 text-orange-600 hover:bg-orange-50 text-sm font-semibold px-4 py-2 rounded-lg">
+                <i class="fas fa-file-pdf"></i> Ver carta (PDF)
+            </a>
         </div>
     </header>
 

@@ -63,7 +63,10 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 
 ### Website content
 
-- `welcome.blade.php` is rendered by `InicioController` from `Contenido` (key/value texts, defined in `Contenido::CAMPOS`) and `SitioItem` (facilities, gallery, testimonials). A section with no published items is hidden.
+- `welcome.blade.php` is rendered by `InicioController` from `Contenido` (key/value texts, defined in `Contenido::CAMPOS`) and `SitioItem` (attractions, activities, events, gallery, testimonials). A section with no published items is hidden. The admin editor at `admin.contenido.index` is generated from those two constants, so a new field or item type needs no new screen.
+- The `instalacion` item type is shown as "Atractivos". Its icon is picked from words in the title (`SitioItem::ICONOS`). Items with a photo render as photo cards and items without one as icon cards.
+- In `Contenido` titles, text between `*asterisks*` renders in italics (`Contenido::titulo()`, which escapes first). An empty image field falls back to `hero_imagen`.
+- The menu PDF is served from `public/docs/carta-casa-blanca.pdf`. Do not create a `public/carta/` folder: it shadows the `/carta` route.
 - Uploaded site images are on the `public` disk under `web/`. Product images are under `productos/`. Both are gitignored, so deploying means copying `storage/app/public` and exporting the database.
 - `public/creditos-fotos.txt` holds the attribution the stock photos' licenses require.
 
