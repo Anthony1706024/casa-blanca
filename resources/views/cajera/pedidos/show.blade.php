@@ -154,7 +154,7 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="etiqueta" for="operacion{{ $i }}">N.° de operación</label>
-                                    <input type="text" id="operacion{{ $i }}" name="pagos[{{ $i }}][numero_operacion]" data-operacion class="campo" maxlength="50" value="{{ old("pagos.$i.numero_operacion") }}">
+                                    <input type="text" id="operacion{{ $i }}" name="pagos[{{ $i }}][numero_operacion]" class="campo" maxlength="50" placeholder="Opcional" value="{{ old("pagos.$i.numero_operacion") }}">
                                 </div>
                             </div>
                         </fieldset>
@@ -208,18 +208,6 @@
                     etiqueta.textContent = 'S/ ' + resto.toFixed(2);
                     etiqueta.className = 'font-bold ' + (resto === 0 ? 'text-green-600' : 'text-red-600');
                 }
-
-                // En efectivo el número de operación es opcional
-                document.querySelectorAll('[data-pago]').forEach(function (pago) {
-                    const metodo = pago.querySelector('[data-metodo]');
-                    const operacion = pago.querySelector('[data-operacion]');
-                    const aplicar = () => {
-                        operacion.required = metodo.value !== 'efectivo';
-                        operacion.placeholder = metodo.value === 'efectivo' ? 'Opcional en efectivo' : 'Obligatorio';
-                    };
-                    metodo.addEventListener('change', aplicar);
-                    aplicar();
-                });
 
                 function textoAlternar() {
                     alternar.querySelector('span').textContent = segundo.disabled ? 'Dividir en 2 pagos' : 'Usar un solo pago';

@@ -375,15 +375,16 @@ class VentasTest extends TestCase
         $this->assertEqualsWithDelta(1, (float) $this->arroz->fresh()->stock, 0.001);
     }
 
-    public function test_el_numero_de_operacion_es_obligatorio_salvo_en_efectivo(): void
+    public function test_el_numero_de_operacion_es_opcional(): void
     {
         $pedido = $this->pedidoPendiente();
 
         $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [
-            ['metodo' => 'yape', 'monto' => 35],
-        ]])->assertSessionHasErrors('pagos.0.numero_operacion');
+            ['metodo' => 'yape', 'monto' => 35, 'numero_operacion' => ''],
+        ]])->assertSessionHasNoErrors();
 
-        $this->assertSame(Pedido::PENDIENTE, $pedido->fresh()->estado);
+        $this->assertSame(Pedido::PAGADO, $pedido->fresh()->estado);
+        $this->assertNull($pedido->fresh()->recibo->pagos->first()->numero_operacion);
     }
 
     public function test_no_se_permiten_mas_de_dos_pagos(): void

@@ -120,19 +120,18 @@ class CobroController extends Controller
 
     public function cobrar(Request $request, $id, VentaService $ventas, TicketeraService $ticketera)
     {
-        // El número de operación es obligatorio salvo en efectivo.
+        // El número de operación es opcional en todos los métodos.
         $datos = $request->validate([
             'pagos' => 'required|array|min:1|max:2',
             'pagos.*.metodo' => ['required', Rule::in(array_keys(Pago::METODOS))],
             'pagos.*.monto' => 'required|numeric|gt:0',
-            'pagos.*.numero_operacion' => 'nullable|string|max:50|required_unless:pagos.*.metodo,efectivo',
+            'pagos.*.numero_operacion' => 'nullable|string|max:50',
         ], [
             'pagos.required' => 'Registra al menos un pago.',
             'pagos.max' => 'Se permiten como máximo 2 formas de pago.',
             'pagos.*.metodo.required' => 'Selecciona el tipo de transacción.',
             'pagos.*.monto.required' => 'Indica el monto del pago.',
             'pagos.*.monto.gt' => 'El monto debe ser mayor a cero.',
-            'pagos.*.numero_operacion.required_unless' => 'El número de operación es obligatorio (excepto en efectivo).',
         ]);
 
         $recibo = $ventas->cobrar((int) $id, $datos['pagos'], $request->user());
@@ -143,7 +142,7 @@ class CobroController extends Controller
 
         if ($ticketera->configurada()) {
             return $ticketera->imprimirVoucher($recibo)
-                ? $redireccion->with('impreso', 'Voucher impreso en la ticketera.')
+                ? $redireccion->with('impreso', $ticketera->enCola() ? 'Voucher enviado a la ticketera.' : 'Voucher impreso en la ticketera.')
                 : $redireccion->with('error', 'El cobro se registró, pero no se pudo imprimir el voucher. Revisa que la ticketera esté prendida y vuelve a imprimir.');
         }
 
