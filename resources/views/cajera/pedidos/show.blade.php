@@ -87,19 +87,17 @@
                     <a href="{{ route('cajera.pedidos.adicionales', $pedido->id) }}" class="text-center border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
                         <i class="fas fa-plus-circle mr-1"></i> Agregar adicionales
                     </a>
-                    <form method="POST" action="{{ route('cajera.pedidos.comanda', $pedido->id) }}">
+                    {{-- El ticket se abre en otra ventana: esta pestaña no se recarga --}}
+                    <form method="POST" action="{{ route('cajera.pedidos.comanda', $pedido->id) }}" id="formTicket" data-modo="{{ $porEnviar > 0 ? 'nuevo' : 'reimprimir' }}">
                         @csrf
-                        @if($porEnviar > 0)
-                            <button type="submit" class="w-full bg-gray-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-semibold transition text-sm">
-                                <i class="fas fa-print mr-1"></i> Imprimir ticket cocina
-                                <span class="ml-1 bg-amber-400 text-black text-xs font-bold rounded-full px-2 py-0.5">{{ $porEnviar }}</span>
-                            </button>
-                        @else
-                            <input type="hidden" name="todo" value="1">
-                            <button type="submit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
-                                <i class="fas fa-redo mr-1"></i> Reimprimir tickets
-                            </button>
-                        @endif
+                        <input type="hidden" name="todo" value="1" @if($porEnviar > 0) disabled @endif>
+                        <button type="submit" data-boton="nuevo" class="{{ $porEnviar > 0 ? '' : 'hidden' }} w-full bg-gray-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                            <i class="fas fa-print mr-1"></i> Imprimir ticket cocina
+                            <span class="ml-1 bg-amber-400 text-black text-xs font-bold rounded-full px-2 py-0.5">{{ $porEnviar }}</span>
+                        </button>
+                        <button type="submit" data-boton="reimprimir" class="{{ $porEnviar > 0 ? 'hidden' : '' }} w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                            <i class="fas fa-redo mr-1"></i> Ticket
+                        </button>
                     </form>
                 </div>
                 <p class="text-xs text-gray-400 mt-2">
@@ -107,6 +105,27 @@
                 </p>
             @endif
         </div>
+
+        @if($pedido->estado === \App\Models\Pedido::PENDIENTE)
+            <!-- Confirmación antes de reimprimir -->
+            <div id="modalReimprimir" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modalReimprimirTitulo">
+                <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+                    <h3 id="modalReimprimirTitulo" class="font-bold text-black text-lg mb-2">
+                        <i class="fas fa-exclamation-triangle text-amber-500 mr-1"></i> ¿Reimprimir los tickets?
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-5">
+                        Los tickets de este pedido ya se enviaron a cocina.
+                        Si los vuelves a imprimir, la cocina podría preparar el pedido dos veces.
+                    </p>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" data-cerrar class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold text-sm">Cancelar</button>
+                        <button type="button" id="confirmarReimprimir" class="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm">
+                            <i class="fas fa-redo mr-1"></i> Sí, reimprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- Cobro -->
         <div class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm">
@@ -216,6 +235,43 @@
                 montos.forEach(campo => campo.addEventListener('input', actualizar));
                 textoAlternar();
                 actualizar();
+
+                // Ticket de cocina: se abre en otra ventana para no recargar esta pestaña.
+                // Reimprimir siempre pide confirmación.
+                const formTicket = document.getElementById('formTicket');
+                const modal = document.getElementById('modalReimprimir');
+                if (formTicket && modal) {
+                    let enviando = false;
+
+                    const enviar = () => {
+                        if (enviando) return; // evita doble clic rápido
+                        enviando = true;
+                        const ventana = 'ticket-pedido-{{ $pedido->id }}';
+                        const abierta = window.open('', ventana, 'width=480,height=860');
+                        formTicket.target = abierta ? ventana : '_blank';
+                        formTicket.submit();
+                        if (abierta) abierta.focus();
+
+                        // Lo pendiente ya salió: el botón pasa a "Ticket" (reimprimir) sin recargar
+                        formTicket.dataset.modo = 'reimprimir';
+                        formTicket.querySelector('input[name=todo]').disabled = false;
+                        formTicket.querySelector('[data-boton=nuevo]').classList.add('hidden');
+                        formTicket.querySelector('[data-boton=reimprimir]').classList.remove('hidden');
+                        setTimeout(() => { enviando = false; }, 1500);
+                    };
+                    const cerrar = () => modal.classList.add('hidden');
+
+                    formTicket.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        if (formTicket.dataset.modo === 'nuevo') return enviar();
+                        modal.classList.remove('hidden');
+                        document.getElementById('confirmarReimprimir').focus();
+                    });
+                    document.getElementById('confirmarReimprimir').addEventListener('click', function () { cerrar(); enviar(); });
+                    modal.querySelector('[data-cerrar]').addEventListener('click', cerrar);
+                    modal.addEventListener('click', e => { if (e.target === modal) cerrar(); });
+                    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrar(); });
+                }
             });
         </script>
     @endpush

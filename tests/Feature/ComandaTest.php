@@ -119,18 +119,31 @@ class ComandaTest extends TestCase
         $this->actingAs($this->cajera)->get(route('cajera.pedidos.show', $this->pedido->id))
             ->assertSee('Imprimir ticket cocina')->assertSee('Agregar adicionales')->assertSee('Por enviar a cocina');
 
+        // Termina en la ventana del ticket, no en la pestaña del pedido
         $this->post(route('cajera.pedidos.comanda', $this->pedido->id))
+            ->assertRedirect(route('cajera.pedidos.comanda.ver', $this->pedido->id))
             ->assertSessionHas('success', 'Tickets enviados a cocina: Cocina 1, Bebidas y tragos, Cocina 2.');
 
         Process::assertRanTimes(fn ($proceso) => in_array('Ticketera de prueba', $proceso->command, true), 1);
         $this->assertTrue($this->pedido->items()->get()->every(fn ($item) => $item->cantidad_enviada === $item->cantidad));
 
         // Sin nada nuevo no se repite; se ofrece reimprimir
-        $this->post(route('cajera.pedidos.comanda', $this->pedido->id))->assertSessionHas('error');
-        $this->get(route('cajera.pedidos.show', $this->pedido->id))->assertSee('Reimprimir tickets')->assertSee('En cocina');
+        $this->post(route('cajera.pedidos.comanda', $this->pedido->id))
+            ->assertRedirect(route('cajera.pedidos.comanda.ver', $this->pedido->id))->assertSessionHas('error');
+        $this->get(route('cajera.pedidos.show', $this->pedido->id))->assertSee('fa-redo mr-1"></i> Ticket', false)->assertSee('En cocina');
+        $this->get(route('cajera.pedidos.comanda.ver', $this->pedido->id))->assertSee('Reimprimir')->assertSee('(REIMPRESIÓN)');
 
         $this->post(route('cajera.pedidos.comanda', $this->pedido->id), ['todo' => 1])->assertSessionHas('success');
         Process::assertRanTimes(fn ($proceso) => true, 2);
+    }
+
+    public function test_cada_ticket_de_cocina_lleva_el_logo(): void
+    {
+        $logo = file_get_contents(resource_path('ticketera/logo.bin'));
+        $this->assertStringStartsWith("\x1D\x76\x30\x00", $logo, 'El logo es una imagen GS v 0');
+
+        $bytes = app(TicketeraService::class)->comanda($this->pedido, app(ComandaService::class)->lote($this->pedido));
+        $this->assertSame(3, substr_count($bytes, $logo));
     }
 
     public function test_si_la_ticketera_falla_no_se_marca_como_enviado(): void
@@ -156,6 +169,7 @@ class ComandaTest extends TestCase
         $this->get(route('cajera.pedidos.comanda.ver', $this->pedido->id))->assertOk()
             ->assertSeeInOrder(['COCINA 1', 'Ceviche mixto', 'BEBIDAS Y TRAGOS', 'Pilsen Callao', 'COCINA 2', 'Cecina de cerdo'])
             ->assertSee('MESA 30')
+            ->assertSee('img/logo-claro.webp')
             ->assertSee('Imprimir 3 tickets');
     }
 

@@ -10,21 +10,24 @@ use App\Services\ComandaService;
 use App\Services\TicketeraService;
 use Illuminate\Http\Request;
 
-// Tickets para cocina: Cocina 1, Bebidas y tragos, Cocina 2 (uno tras otro, cada uno con su corte)
+// Tickets para cocina: Cocina 1, Bebidas y tragos, Cocina 2 (uno tras otro, cada uno con su corte).
+// Se abren en una ventana aparte (cajera/pedidos/show), así la pestaña del pedido no se recarga:
+// toda respuesta termina en la vista del ticket, desde donde se imprime o reimprime.
 class ComandaController extends Controller
 {
     public function imprimir(Request $request, $id, ComandaService $comandas, TicketeraService $ticketera)
     {
         $pedido = Pedido::with(['items.producto', 'mozo'])->findOrFail($id);
+        $vista = redirect()->route('cajera.pedidos.comanda.ver', $pedido->id);
 
         if ($pedido->estado === Pedido::ANULADO) {
-            return back()->with('error', 'Este pedido está anulado: no se envía a cocina.');
+            return $vista->with('error', 'Este pedido está anulado: no se envía a cocina.');
         }
 
         $lote = $comandas->lote($pedido, $request->boolean('todo'));
 
         if (empty($lote['tickets'])) {
-            return back()->with('error', 'No hay productos nuevos para enviar a cocina. Usa «Reimprimir tickets» si necesitas otra copia.');
+            return $vista->with('error', 'No hay productos nuevos para enviar a cocina. Usa «Reimprimir» si necesitas otra copia.');
         }
 
         $cocinas = collect(array_keys($lote['tickets']))->map(fn ($cocina) => Producto::COCINAS[$cocina])->implode(', ');
@@ -33,27 +36,30 @@ class ComandaController extends Controller
         if (! $ticketera->configurada()) {
             $comandas->marcarEnviado($lote);
 
-            return redirect()->route('cajera.pedidos.comanda.ver', $pedido->id)->with('comanda', $lote);
+            return $vista->with('comanda', $lote);
         }
 
         if (! $ticketera->imprimirComanda($pedido, $lote)) {
-            return back()->with('error', 'No se pudieron imprimir los tickets de cocina. Revisa que la ticketera esté prendida y con papel, y vuelve a intentarlo.');
+            return $vista->with('error', 'No se pudieron imprimir los tickets de cocina. Revisa que la ticketera esté prendida y con papel, y vuelve a intentarlo.');
         }
 
         $comandas->marcarEnviado($lote);
 
-        return back()->with('success', "Tickets enviados a cocina: {$cocinas}.");
+        return $vista->with('comanda', $lote)->with('success', "Tickets enviados a cocina: {$cocinas}.");
     }
 
-    // Versión para imprimir desde el navegador cuando no hay ticketera configurada
-    public function ver($id, ComandaService $comandas)
+    // Vista del ticket: muestra lo último que se envió, o lo pendiente si falta enviar algo
+    public function ver($id, ComandaService $comandas, TicketeraService $ticketera)
     {
         $pedido = Pedido::with(['items.producto', 'mozo'])->findOrFail($id);
-        $lote = session('comanda') ?? $comandas->lote($pedido, true);
+        $porEnviar = $comandas->porEnviar($pedido);
+        $lote = session('comanda') ?? $comandas->lote($pedido, $porEnviar === 0);
         $negocio = Contenido::valores();
         $ancho = $negocio['ticket_ancho'] === '58' ? '58' : '80';
-        $recienEnviado = session()->has('comanda');
+        $conTicketera = $ticketera->configurada();
+        // Sin ticketera, lo recién enviado se imprime solo desde el navegador
+        $recienEnviado = ! $conTicketera && session()->has('comanda');
 
-        return view('cajera.pedidos.comanda', compact('pedido', 'lote', 'ancho', 'recienEnviado'));
+        return view('cajera.pedidos.comanda', compact('pedido', 'lote', 'ancho', 'recienEnviado', 'porEnviar', 'conTicketera'));
     }
 }

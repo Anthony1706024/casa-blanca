@@ -71,6 +71,7 @@ class TicketeraService
         foreach ($lote['tickets'] as $cocina => $lineas) {
             $numero++;
             $this->comando(self::INICIAR.self::TABLA_850);
+            $this->logo();
 
             // Cocina y mesa en grande: es lo primero que se lee
             $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
@@ -266,6 +267,15 @@ class TicketeraService
     private function comando(string $bytes): void
     {
         $this->datos .= $bytes;
+    }
+
+    // Logo centrado en 1 bit (comando GS v 0). Se genera con resources/ticketera/generar-logo.ps1
+    private function logo(): void
+    {
+        $archivo = resource_path('ticketera/logo.bin');
+        if (is_file($archivo)) {
+            $this->comando(self::CENTRO.file_get_contents($archivo)."\n".self::IZQUIERDA);
+        }
     }
 
     private function linea(string $texto): void
