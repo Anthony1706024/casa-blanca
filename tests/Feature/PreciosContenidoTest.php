@@ -51,6 +51,7 @@ class PreciosContenidoTest extends TestCase
     {
         $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
             'dni' => '12345678',
+            'mesa' => '5',
             'items' => [$this->gaseosa->id => $cantidad],
         ])->assertSessionHasNoErrors();
 
@@ -98,6 +99,7 @@ class PreciosContenidoTest extends TestCase
     {
         $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
             'dni' => '12345678',
+            'mesa' => '5',
             'items' => [$this->gaseosa->id => 2],
         ]);
         $pedido = Pedido::firstOrFail();
@@ -131,6 +133,7 @@ class PreciosContenidoTest extends TestCase
     {
         $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
             'dni' => '12345678',
+            'mesa' => '5',
             'items' => [$this->gaseosa->id => 2],
         ]);
 

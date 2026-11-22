@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contenido;
 use App\Models\Recibo;
 use App\Services\TicketeraService;
+use Illuminate\Support\Facades\DB;
 
 class ReciboController extends Controller
 {
@@ -19,6 +20,22 @@ class ReciboController extends Controller
         $ticketera = app(TicketeraService::class)->configurada();
 
         return view('recibos.show', compact('recibo', 'negocio', 'ancho', 'ticketera'));
+    }
+
+    // Borra el recibo con sus pagos y el pedido con sus platos, de la lista y de la base.
+    // Sirve para limpiar ventas de prueba. No devuelve stock (a propósito).
+    public function destroy($id)
+    {
+        $recibo = Recibo::with('pedido')->findOrFail($id);
+        $numeros = "{$recibo->numero} y su pedido {$recibo->pedido->numero}";
+
+        DB::transaction(function () use ($recibo) {
+            $pedido = $recibo->pedido;
+            $recibo->delete();          // los pagos se borran en cascada
+            $pedido->delete();          // los platos del pedido se borran en cascada
+        });
+
+        return back()->with('success', "Se borró el recibo {$numeros}.");
     }
 
     // Reimprimir en la ticketera

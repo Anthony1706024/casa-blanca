@@ -70,7 +70,8 @@ class ColaImpresionTest extends TestCase
     {
         $this->post(route('cajera.pedidos.cobrar', $this->pedido->id), ['pagos' => [['metodo' => 'efectivo', 'monto' => 119]]])
             ->assertSessionHasNoErrors()
-            ->assertSessionHas('impreso', 'Voucher enviado a la ticketera.');
+            ->assertRedirect(route('cajera.pedidos.index'))
+            ->assertSessionHas('success', fn ($mensaje) => str_contains($mensaje, 'Comprobante enviado a la ticketera.'));
 
         $recibo = Recibo::firstOrFail();
         $impresion = Impresion::sole();

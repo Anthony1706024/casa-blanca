@@ -23,17 +23,20 @@ class CobroController extends Controller
     {
         $query = Pedido::with(['items', 'mozo'])->where('estado', Pedido::PENDIENTE)->orderBy('id');
 
+        // Un solo buscador: DNI o número de mesa (el DNI es opcional)
         if ($request->filled('dni')) {
-            $query->where('dni', 'LIKE', "%{$request->dni}%");
+            $buscar = trim($request->dni);
+            $query->where(fn ($q) => $q->where('dni', 'LIKE', "%{$buscar}%")->orWhere('mesa', $buscar));
         }
 
         $pedidos = $query->paginate(15)->withQueryString();
+        $idsPendientes = Pedido::where('estado', Pedido::PENDIENTE)->pluck('id');
 
-        return view('cajera.pedidos.index', compact('pedidos'));
+        return view('cajera.pedidos.index', compact('pedidos', 'idsPendientes'));
     }
 
     // ==========================================
-    // NUEVO PEDIDO DESDE CAJA: se registra y pasa directo al cobro
+    // NUEVO PEDIDO DESDE CAJA: solo se guarda; el cobro es aparte, cuando el cliente paga
     // ==========================================
     public function create()
     {
@@ -49,7 +52,7 @@ class CobroController extends Controller
         $pedido = $ventas->crearPedido($datos, $datos['items'], 'caja', $request->user());
 
         return redirect()->route('cajera.pedidos.show', $pedido->id)
-            ->with('success', "Pedido {$pedido->numero} registrado. Ahora registra el cobro.");
+            ->with('success', "Pedido {$pedido->numero} guardado (mesa {$pedido->mesa}). Imprime el ticket para cocina; el cobro se registra cuando el cliente pague.");
     }
 
     // ==========================================
@@ -134,19 +137,29 @@ class CobroController extends Controller
             'pagos.*.monto.gt' => 'El monto debe ser mayor a cero.',
         ]);
 
+        // Recién aquí el pedido pasa a pagado (la cuenta para la mesa se imprime antes, sin cobrar)
         $recibo = $ventas->cobrar((int) $id, $datos['pagos'], $request->user());
+        $recibo->load('pedido');
 
-        // Si falla la ticketera, el cobro ya quedó registrado: solo se avisa
-        $redireccion = redirect()->route('recibos.show', $recibo->id)
-            ->with('success', 'Cobro registrado correctamente');
+        // Se vuelve a la lista: el comprobante va a la ticketera o se abre aparte, sin perder la pantalla de caja
+        $mensaje = "Cobro registrado: {$recibo->pedido->numero}".($recibo->pedido->mesa ? " (mesa {$recibo->pedido->mesa})" : '')
+            .' por S/ '.number_format((float) $recibo->total, 2).'.';
+        $redireccion = redirect()->route('cajera.pedidos.index');
 
-        if ($ticketera->configurada()) {
-            return $ticketera->imprimirVoucher($recibo)
-                ? $redireccion->with('impreso', $ticketera->enCola() ? 'Voucher enviado a la ticketera.' : 'Voucher impreso en la ticketera.')
-                : $redireccion->with('error', 'El cobro se registró, pero no se pudo imprimir el voucher. Revisa que la ticketera esté prendida y vuelve a imprimir.');
+        if (! $request->boolean('imprimir', true)) {
+            return $redireccion->with('success', $mensaje)->with('recibo_id', $recibo->id);
         }
 
-        return $redireccion;
+        if (! $ticketera->configurada()) {
+            // Sin ticketera: la lista ofrece abrir el comprobante en otra ventana para imprimirlo
+            return $redireccion->with('success', $mensaje)->with('recibo_id', $recibo->id)->with('recibo_imprimir', true);
+        }
+
+        // Si falla la ticketera, el cobro ya quedó registrado: solo se avisa
+        return $ticketera->imprimirVoucher($recibo)
+            ? $redireccion->with('success', $mensaje.($ticketera->enCola() ? ' Comprobante enviado a la ticketera.' : ' Comprobante impreso.'))->with('recibo_id', $recibo->id)
+            : $redireccion->with('success', $mensaje)->with('recibo_id', $recibo->id)
+                ->with('error', 'No se pudo imprimir el comprobante. Revisa que la ticketera esté prendida y reimprímelo desde «Recibos emitidos».');
     }
 
     public function anular($id, VentaService $ventas)

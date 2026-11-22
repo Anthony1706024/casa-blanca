@@ -11,9 +11,10 @@ use Illuminate\Http\Request;
 
 class PedidoController extends Controller
 {
+    // Cada mozo ve y anula solo sus propios pedidos; caja ve todos
     public function index(Request $request)
     {
-        $query = Pedido::with(['items', 'mozo'])->orderBy('id', 'desc');
+        $query = Pedido::with(['items', 'mozo'])->where('mozo_id', $request->user()->id)->orderBy('id', 'desc');
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
@@ -42,12 +43,14 @@ class PedidoController extends Controller
         $pedido = $ventas->crearPedido($datos, $datos['items'], 'mozo', $request->user());
 
         return redirect()->route('mozo.pedidos.index')
-            ->with('success', "Pedido {$pedido->numero} registrado. El cliente puede pagar en caja con su DNI.");
+            ->with('success', "Pedido {$pedido->numero} registrado para la mesa {$pedido->mesa}.");
     }
 
-    public function anular($id, VentaService $ventas)
+    public function anular(Request $request, $id, VentaService $ventas)
     {
-        $ventas->anular((int) $id);
+        // Un pedido de otro mozo responde 404, como si no existiera
+        $pedido = Pedido::where('mozo_id', $request->user()->id)->findOrFail($id);
+        $ventas->anular($pedido->id);
 
         return redirect()->route('mozo.pedidos.index')
             ->with('success', 'Pedido anulado');

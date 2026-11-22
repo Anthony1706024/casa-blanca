@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\VentaController;
 use App\Http\Controllers\Cajera\CobroController;
 use App\Http\Controllers\Cajera\ComandaController;
+use App\Http\Controllers\Cajera\CuentaController;
 use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
 use App\Http\Controllers\CartaController;
 use App\Http\Controllers\ImpresionController;
@@ -150,6 +151,9 @@ Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.
     Route::post('/pedidos/{id}/adicionales', [CobroController::class, 'adicionalesStore'])->name('pedidos.adicionales.store');
     Route::post('/pedidos/{id}/items/{item}/quitar', [CobroController::class, 'quitarItem'])->name('pedidos.items.quitar');
     Route::post('/pedidos/{id}/comanda', [ComandaController::class, 'imprimir'])->name('pedidos.comanda');
+    // Cuenta para la mesa, antes de cobrar (no cambia el estado)
+    Route::get('/pedidos/{id}/cuenta', [CuentaController::class, 'ver'])->name('pedidos.cuenta');
+    Route::post('/pedidos/{id}/cuenta', [CuentaController::class, 'imprimir'])->name('pedidos.cuenta.imprimir');
     Route::get('/pedidos/{id}/comanda', [ComandaController::class, 'ver'])->name('pedidos.comanda.ver');
 });
 
@@ -157,6 +161,8 @@ Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.
 Route::middleware(['auth', 'checkrole:admin,cajera'])->group(function () {
     Route::get('/recibos/{id}', [ReciboController::class, 'show'])->name('recibos.show');
     Route::post('/recibos/{id}/imprimir', [ReciboController::class, 'imprimir'])->name('recibos.imprimir');
+    // Borra el recibo, sus pagos y su pedido (no devuelve stock)
+    Route::delete('/recibos/{id}', [ReciboController::class, 'destroy'])->name('recibos.destroy');
 
     // Seguimiento de la cola de impresión
     Route::get('/impresiones', [ImpresionController::class, 'index'])->name('impresiones.index');

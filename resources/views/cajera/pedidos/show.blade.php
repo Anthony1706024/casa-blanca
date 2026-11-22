@@ -1,8 +1,8 @@
 @extends('layouts.panel', ['nav' => 'cajera.nav'])
 
-@section('titulo', 'Cobrar Pedido')
-@section('icono', 'fa-money-bill-wave')
-@section('subtitulo', "Pedido {$pedido->numero} · DNI {$pedido->dni}")
+@section('titulo', "Pedido {$pedido->numero}")
+@section('icono', 'fa-receipt')
+@section('subtitulo', collect([$pedido->mesa ? "Mesa {$pedido->mesa}" : null, $pedido->cliente_nombre, $pedido->dni ? "DNI {$pedido->dni}" : null])->filter()->implode(' · '))
 @section('ancho', 'max-w-5xl')
 
 @section('acciones')
@@ -22,7 +22,7 @@
 
             <dl class="grid grid-cols-2 gap-y-1 text-sm mb-4">
                 <dt class="text-gray-500">DNI</dt>
-                <dd class="text-right font-semibold">{{ $pedido->dni }}</dd>
+                <dd class="text-right font-semibold">{{ $pedido->dni ?? '—' }}</dd>
                 @if($pedido->cliente_nombre)
                     <dt class="text-gray-500">Cliente</dt>
                     <dd class="text-right">{{ $pedido->cliente_nombre }}</dd>
@@ -103,6 +103,15 @@
                 <p class="text-xs text-gray-400 mt-2">
                     Sale un ticket por cocina, en este orden: {{ implode(', ', \App\Models\Producto::COCINAS) }}. Solo se imprime lo que aún no se envió.
                 </p>
+
+                {{-- La cuenta se lleva a la mesa antes de cobrar: no cambia el estado. Se abre en otra ventana. --}}
+                <form method="POST" action="{{ route('cajera.pedidos.cuenta.imprimir', $pedido->id) }}" id="formCuenta" class="mt-4">
+                    @csrf
+                    <button type="submit" class="w-full bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Imprimir cuenta para la mesa
+                    </button>
+                </form>
+                <p class="text-xs text-gray-400 mt-2">La cuenta no cobra: el pedido sigue pendiente hasta que registres el pago.</p>
             @endif
         </div>
 
@@ -169,9 +178,16 @@
                         <span id="restante" class="font-bold"></span>
                     </div>
 
+                    <label class="flex items-center gap-2 text-sm text-gray-700 mb-4">
+                        <input type="hidden" name="imprimir" value="0">
+                        <input type="checkbox" name="imprimir" value="1" {{ old('imprimir', '1') ? 'checked' : '' }}>
+                        Imprimir el comprobante de pago
+                    </label>
+
                     <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition text-sm shadow-sm">
-                        <i class="fas fa-check-circle mr-2"></i> Cobrar y emitir recibo
+                        <i class="fas fa-check-circle mr-2"></i> Registrar cobro
                     </button>
+                    <p class="text-xs text-gray-400 mt-2">Recién aquí el pedido pasa a pagado. Luego vuelves a la lista de pedidos por cobrar.</p>
                 </form>
 
                 <form method="POST" action="{{ route('cajera.pedidos.anular', $pedido->id) }}" onsubmit="return confirm('¿Anular este pedido?')" class="mt-3">
@@ -223,6 +239,19 @@
                 montos.forEach(campo => campo.addEventListener('input', actualizar));
                 textoAlternar();
                 actualizar();
+
+                // Cuenta: se abre en otra ventana para no perder lo que se está haciendo aquí
+                const formCuenta = document.getElementById('formCuenta');
+                if (formCuenta) {
+                    formCuenta.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        const ventana = 'cuenta-pedido-{{ $pedido->id }}';
+                        const abierta = window.open('', ventana, 'width=480,height=860');
+                        formCuenta.target = abierta ? ventana : '_blank';
+                        formCuenta.submit();
+                        if (abierta) abierta.focus();
+                    });
+                }
 
                 // Ticket de cocina: se abre en otra ventana para no recargar esta pestaña.
                 // Reimprimir siempre pide confirmación.

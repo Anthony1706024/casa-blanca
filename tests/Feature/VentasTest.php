@@ -4,12 +4,16 @@ namespace Tests\Feature;
 
 use App\Models\Categoria;
 use App\Models\CategoriaInsumo;
+use App\Models\Impresion;
 use App\Models\Insumo;
+use App\Models\Pago;
 use App\Models\Pedido;
+use App\Models\PedidoItem;
 use App\Models\Producto;
 use App\Models\Role;
 use App\Models\Subcategoria;
 use App\Models\User;
+use App\Services\TicketeraService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -64,6 +68,7 @@ class VentasTest extends TestCase
     {
         $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
             'dni' => '12345678',
+            'mesa' => '5',
             'items' => $items ?: [$this->plato->id => 1, $this->gaseosa->id => 2],
         ])->assertSessionHasNoErrors();
 
@@ -261,34 +266,51 @@ class VentasTest extends TestCase
 
     public function test_la_mesa_se_ve_en_las_listas_del_mozo_y_de_caja(): void
     {
-        $this->post(route('carta.store'), [
+        // Pedido del mozo: lo ve él y caja
+        $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
             'dni' => '87654321',
             'mesa' => 'Terraza 9',
             'items' => [$this->gaseosa->id => 1],
         ])->assertSessionHasNoErrors();
 
-        $this->actingAs($this->mozo)->get(route('mozo.pedidos.index'))->assertSee('Terraza 9');
+        $this->get(route('mozo.pedidos.index'))->assertSee('Terraza 9');
         $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))->assertSee('Terraza 9');
+
+        // Prepedido de la carta web: solo caja
+        auth()->logout();
+        $this->post(route('carta.store'), [
+            'dni' => '87654322',
+            'mesa' => 'Jardín 2',
+            'items' => [$this->gaseosa->id => 1],
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))->assertSee('Jardín 2');
+        $this->actingAs($this->mozo)->get(route('mozo.pedidos.index'))->assertDontSee('Jardín 2');
     }
 
-    public function test_la_cajera_registra_un_pedido_y_pasa_al_cobro(): void
+    public function test_la_cajera_solo_guarda_el_pedido_y_cobra_despues(): void
     {
         $this->actingAs($this->cajera)->get(route('cajera.pedidos.create'))->assertOk()
             ->assertSee('Arroz con pollo')
-            ->assertSee('Guardar y cobrar');
+            ->assertSee('Guardar')
+            ->assertDontSee('Guardar y cobrar')
+            ->assertSee('id="verSeleccion"', false)
+            ->assertSee('id="modalSeleccion"', false);
 
+        // Sin DNI ni nombre: solo la mesa
         $respuesta = $this->post(route('cajera.pedidos.store'), [
-            'dni' => '44556677',
-            'cliente_nombre' => 'Para llevar',
+            'mesa' => '9',
             'items' => [$this->plato->id => 1, $this->gaseosa->id => 1],
         ]);
 
         $pedido = Pedido::firstOrFail();
         $respuesta->assertSessionHasNoErrors()->assertRedirect(route('cajera.pedidos.show', $pedido->id));
 
+        $this->assertSame(Pedido::PENDIENTE, $pedido->estado, 'Guardar no cobra');
         $this->assertSame('caja', $pedido->origen);
         $this->assertSame($this->cajera->id, $pedido->mozo_id);
-        $this->assertNull($pedido->mesa);
+        $this->assertNull($pedido->dni);
+        $this->assertNull($pedido->cliente_nombre);
+        $this->assertSame('9', $pedido->mesa);
         $this->assertEqualsWithDelta(30, (float) $pedido->total, 0.001);
         // Registrar no descuenta stock: eso pasa al cobrar
         $this->assertSame(5, (int) $this->gaseosa->fresh()->stock);
@@ -303,19 +325,245 @@ class VentasTest extends TestCase
         $this->assertSame(4, (int) $this->gaseosa->fresh()->stock);
     }
 
-    public function test_la_cajera_no_registra_un_pedido_sin_dni_ni_productos(): void
+    public function test_la_mesa_es_lo_unico_obligatorio(): void
     {
         $this->actingAs($this->cajera)->post(route('cajera.pedidos.store'), [
-            'dni' => '',
-            'items' => [$this->plato->id => 0],
-        ])->assertSessionHasErrors('dni');
+            'dni' => '44556677',
+            'items' => [$this->plato->id => 1],
+        ])->assertSessionHasErrors('mesa');
 
         $this->post(route('cajera.pedidos.store'), [
-            'dni' => '44556677',
+            'mesa' => '3',
             'items' => [$this->plato->id => 0],
         ])->assertSessionHasErrors('items');
 
+        // Si se da el DNI, debe tener 8 dígitos
+        $this->post(route('cajera.pedidos.store'), [
+            'mesa' => '3',
+            'dni' => '123',
+            'items' => [$this->plato->id => 1],
+        ])->assertSessionHasErrors('dni');
+
+        $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
+            'items' => [$this->plato->id => 1],
+        ])->assertSessionHasErrors('mesa');
+
         $this->assertSame(0, Pedido::count());
+
+        // La carta web tampoco pide DNI
+        auth()->logout();
+        $this->post(route('carta.store'), ['mesa' => '4', 'items' => [$this->gaseosa->id => 1]])->assertSessionHasNoErrors();
+        $this->assertNull(Pedido::sole()->dni);
+    }
+
+    public function test_un_pedido_sin_dni_ni_nombre_no_los_muestra_en_la_cuenta_ni_en_el_comprobante(): void
+    {
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.store'), [
+            'mesa' => '6',
+            'items' => [$this->gaseosa->id => 1],
+        ])->assertSessionHasNoErrors();
+        $pedido = Pedido::sole();
+
+        $ticketera = app(TicketeraService::class);
+        $this->assertStringNotContainsString('DNI:', $ticketera->cuenta($pedido));
+        $this->assertStringNotContainsString('Cliente:', $ticketera->cuenta($pedido));
+
+        $this->get(route('cajera.pedidos.cuenta', $pedido->id))->assertOk()
+            ->assertSee('CUENTA')
+            ->assertSee('Mesa: 06')
+            ->assertDontSee('DNI:');
+
+        // Buscar en caja por la mesa
+        $this->get(route('cajera.pedidos.index', ['dni' => '6']))->assertSee($pedido->numero);
+
+        $this->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [['metodo' => 'efectivo', 'monto' => 5]]])->assertSessionHasNoErrors();
+        $recibo = $pedido->fresh('recibo')->recibo;
+        $this->assertStringNotContainsString('DNI:', $ticketera->voucher($recibo));
+        $this->get(route('recibos.show', $recibo->id))->assertOk()->assertDontSee('DNI:');
+    }
+
+    public function test_imprimir_la_cuenta_no_cobra_el_pedido(): void
+    {
+        $pedido = $this->pedidoPendiente();
+
+        // Sin ticketera: la cuenta se imprime desde el navegador, en otra ventana
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.show', $pedido->id))->assertOk()
+            ->assertSee('Imprimir cuenta para la mesa')
+            ->assertSee('Registrar cobro');
+
+        $this->post(route('cajera.pedidos.cuenta.imprimir', $pedido->id))
+            ->assertRedirect(route('cajera.pedidos.cuenta', $pedido->id));
+
+        $this->get(route('cajera.pedidos.cuenta', $pedido->id))->assertOk()
+            ->assertSee('CUENTA')
+            ->assertDontSee('Estado:')
+            ->assertSee('S/ 35.00')
+            ->assertDontSee('COMPROBANTE DE CONSUMO');
+
+        $this->assertSame(Pedido::PENDIENTE, $pedido->fresh()->estado);
+        $this->assertNull($pedido->fresh('recibo')->recibo);
+        $this->assertSame(5, (int) $this->gaseosa->fresh()->stock, 'La cuenta no descuenta stock');
+
+        // El mozo no imprime cuentas de caja
+        $this->actingAs($this->mozo)->post(route('cajera.pedidos.cuenta.imprimir', $pedido->id))->assertForbidden();
+    }
+
+    public function test_la_cuenta_va_a_la_cola_de_la_ticketera_sin_cobrar(): void
+    {
+        config(['services.ticketera.modo' => 'cola', 'services.ticketera.clave' => 'clave-de-prueba']);
+        $pedido = $this->pedidoPendiente();
+
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cuenta.imprimir', $pedido->id))
+            ->assertSessionHas('impreso', 'Cuenta enviada a la ticketera.');
+
+        $impresion = Impresion::sole();
+        $this->assertSame(Impresion::CUENTA, $impresion->tipo);
+        $this->assertSame(app(TicketeraService::class)->cuenta($pedido->fresh()), $impresion->bytes);
+        $this->assertStringContainsString('CUENTA', $impresion->bytes);
+        $this->assertStringNotContainsString('Estado', $impresion->bytes);
+        $this->assertStringNotContainsString("\x1B\x45\x01", $impresion->bytes, 'Sin negrita');
+        $this->assertSame(Pedido::PENDIENTE, $pedido->fresh()->estado);
+    }
+
+    public function test_despues_de_cobrar_vuelve_a_la_lista_y_ofrece_abrir_el_comprobante_aparte(): void
+    {
+        $pedido = $this->pedidoPendiente();
+
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [
+            ['metodo' => 'efectivo', 'monto' => 35],
+        ]])->assertRedirect(route('cajera.pedidos.index'));
+
+        $recibo = $pedido->fresh('recibo')->recibo;
+        $this->get(route('cajera.pedidos.index'))
+            ->assertSee('Abrir comprobante')
+            ->assertSee(route('recibos.show', ['id' => $recibo->id, 'imprimir' => 1]), false)
+            ->assertSee('target="recibo-'.$recibo->id.'"', false);
+    }
+
+    public function test_borrar_un_recibo_borra_su_pedido_sin_tocar_el_stock(): void
+    {
+        $pedido = $this->pedidoPendiente();
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [
+            ['metodo' => 'efectivo', 'monto' => 35],
+        ]])->assertSessionHasNoErrors();
+        $recibo = $pedido->fresh('recibo')->recibo;
+        $stock = (int) $this->gaseosa->fresh()->stock;
+
+        // Ver abre en otra ventana; al lado está el botón de borrar
+        $this->get(route('cajera.recibos.index'))->assertOk()
+            ->assertSee('target="recibo-'.$recibo->id.'"', false)
+            ->assertSee(route('recibos.destroy', $recibo->id), false);
+
+        // El mozo no puede
+        $this->actingAs($this->mozo)->delete(route('recibos.destroy', $recibo->id))->assertForbidden();
+
+        $this->actingAs($this->cajera)->from(route('cajera.recibos.index'))->delete(route('recibos.destroy', $recibo->id))
+            ->assertRedirect(route('cajera.recibos.index'))
+            ->assertSessionHas('success');
+
+        $this->assertNull($recibo->fresh());
+        $this->assertNull($pedido->fresh());
+        $this->assertSame(0, Pago::count());
+        $this->assertSame(0, PedidoItem::count());
+        $this->assertSame($stock, (int) $this->gaseosa->fresh()->stock, 'No devuelve stock');
+
+        // Ya no está en la tabla (el mensaje de éxito sí nombra el número)
+        $this->get(route('cajera.recibos.index'))->assertDontSee(route('recibos.destroy', $recibo->id), false)->assertSee('No hay recibos.');
+        $this->get(route('cajera.dashboard'))->assertViewHas('recibosHoy', 0)->assertViewHas('cobradoHoy', 0);
+
+        // El admin también puede, desde Ventas
+        $otro = $this->pedidoPendiente();
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $otro->id), ['pagos' => [['metodo' => 'efectivo', 'monto' => 35]]]);
+        $this->actingAs($this->admin)->get(route('admin.ventas.index'))->assertSee(route('recibos.destroy', $otro->fresh('recibo')->recibo->id), false);
+        $this->delete(route('recibos.destroy', $otro->fresh('recibo')->recibo->id))->assertSessionHas('success');
+        $this->assertSame(0, Pedido::count());
+    }
+
+    public function test_la_ticketera_no_recibe_tildes(): void
+    {
+        $this->assertSame('Descripcion camaron Metodo Nro. de operacion GRACIAS!! Pena', TicketeraService::sinTildes('Descripción camarón Método N.º de operación ¡GRACIAS!! Peña'));
+    }
+
+    public function test_cada_mozo_ve_solo_sus_pedidos_y_caja_ve_todos(): void
+    {
+        $juan = $this->mozo;
+        $pedro = User::factory()->create(['name' => 'Pedro Ramos', 'role_id' => $juan->role_id]);
+
+        $this->actingAs($juan)->post(route('mozo.pedidos.store'), [
+            'dni' => '55556666',
+            'cliente_nombre' => 'Mesa de Juan',
+            'mesa' => '14',
+            'items' => [$this->plato->id => 1],
+        ])->assertSessionHasNoErrors();
+        $deJuan = Pedido::firstOrFail();
+
+        $this->actingAs($pedro)->post(route('mozo.pedidos.store'), [
+            'dni' => '77778888',
+            'mesa' => '20',
+            'items' => [$this->gaseosa->id => 1],
+        ])->assertSessionHasNoErrors();
+        $dePedro = Pedido::latest('id')->firstOrFail();
+
+        // Un prepedido de la carta web solo lo ve caja
+        $this->post(route('carta.store'), ['dni' => '99990000', 'mesa' => '3', 'items' => [$this->gaseosa->id => 1]]);
+        $deCliente = Pedido::where('origen', 'cliente')->firstOrFail();
+
+        // Juan ve el suyo y no el de Pedro ni el del cliente
+        $this->actingAs($juan)->get(route('mozo.pedidos.index'))->assertOk()
+            ->assertSee($deJuan->numero)
+            ->assertDontSee($dePedro->numero)
+            ->assertDontSee($deCliente->numero);
+        $this->get(route('mozo.pedidos.index', ['dni' => '77778888']))->assertOk()->assertDontSee($dePedro->numero);
+        $this->get(route('mozo.dashboard'))->assertOk()->assertViewHas('pendientes', 1);
+
+        // Pedro ve el suyo y no puede anular el de Juan
+        $this->actingAs($pedro)->get(route('mozo.pedidos.index'))->assertOk()
+            ->assertSee($dePedro->numero)
+            ->assertDontSee($deJuan->numero);
+        $this->post(route('mozo.pedidos.anular', $deJuan->id))->assertNotFound();
+        $this->assertSame(Pedido::PENDIENTE, $deJuan->fresh()->estado);
+
+        // Caja ve los tres
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))->assertOk()
+            ->assertSee($deJuan->numero)
+            ->assertSee($dePedro->numero)
+            ->assertSee($deCliente->numero);
+    }
+
+    public function test_al_cobrar_el_pedido_queda_pagado_y_el_mozo_lo_ve_asi(): void
+    {
+        $pedido = $this->pedidoPendiente();
+
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [
+            ['metodo' => 'efectivo', 'monto' => 35],
+        ]])->assertSessionHasNoErrors();
+
+        $this->assertSame(Pedido::PAGADO, $pedido->fresh()->estado);
+        $this->assertNotContains($pedido->id, Pedido::where('estado', Pedido::PENDIENTE)->pluck('id')->all());
+
+        // El mozo lo ve "Pagado" en su lista, que se actualiza sola
+        $this->actingAs($this->mozo)->get(route('mozo.pedidos.index'))->assertOk()
+            ->assertSee('data-auto="lista"', false)
+            ->assertSee('data-pedido-id="'.$pedido->id.'"', false)
+            ->assertSee('Pagado');
+        $this->get(route('mozo.dashboard'))->assertViewHas('pagadosHoy', 1)->assertViewHas('pendientes', 0);
+
+        // Y ya no está en "Pedidos por cobrar"
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))->assertDontSee('data-pedido-id="'.$pedido->id.'"', false);
+    }
+
+    public function test_las_pantallas_de_caja_se_actualizan_solas_y_avisan_los_pedidos_nuevos(): void
+    {
+        $pedido = $this->pedidoPendiente();
+
+        foreach (['cajera.pedidos.index', 'cajera.dashboard'] as $ruta) {
+            $this->actingAs($this->cajera)->get(route($ruta))->assertOk()
+                ->assertSee('data-auto="avisos"', false)
+                ->assertSee('data-aviso-id="'.$pedido->id.'"', false)
+                ->assertSee('id="avisoNuevos"', false);
+        }
+
+        $this->get(route('cajera.pedidos.index'))->assertSee('data-pedido-id="'.$pedido->id.'"', false);
     }
 
     public function test_el_mozo_no_entra_al_registro_de_caja(): void
@@ -323,6 +571,7 @@ class VentasTest extends TestCase
         $this->actingAs($this->mozo)->get(route('cajera.pedidos.create'))->assertForbidden();
         $this->actingAs($this->mozo)->post(route('cajera.pedidos.store'), [
             'dni' => '44556677',
+            'mesa' => '1',
             'items' => [$this->gaseosa->id => 1],
         ])->assertForbidden();
     }
@@ -344,7 +593,7 @@ class VentasTest extends TestCase
 
         $respuesta->assertSessionHasNoErrors();
         $recibo = $pedido->fresh('recibo')->recibo;
-        $respuesta->assertRedirect(route('recibos.show', $recibo->id));
+        $respuesta->assertRedirect(route('cajera.pedidos.index'))->assertSessionHas('recibo_id', $recibo->id);
 
         $this->assertSame(Pedido::PAGADO, $pedido->fresh()->estado);
         $this->assertCount(2, $recibo->pagos);

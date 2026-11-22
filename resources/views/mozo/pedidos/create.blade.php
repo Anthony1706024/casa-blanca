@@ -2,7 +2,7 @@
 
 @section('titulo', 'Registrar Pedido')
 @section('icono', 'fa-plus-circle')
-@section('subtitulo', 'Selecciona lo que pide el cliente; pagará en caja con su DNI')
+@section('subtitulo', 'Solo la mesa es obligatoria. El cliente paga en caja')
 
 @section('contenido')
     <form method="POST" action="{{ route('mozo.pedidos.store') }}">

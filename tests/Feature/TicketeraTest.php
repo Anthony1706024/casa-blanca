@@ -42,23 +42,36 @@ class TicketeraTest extends TestCase
     {
         $voucher = mb_convert_encoding(app(TicketeraService::class)->voucher($this->recibo), 'UTF-8', 'CP850');
 
-        foreach (['CASA BLANCA', 'RUC: 10181327401', 'COMPROBANTE DE CONSUMO', 'N.º 0000001', 'Mesa: 05', 'DNI: 12345678',
-            'Atendido por: Juan', 'Picante de camarón', '110.00', 'S/ 55.00 c/u', 'TOTAL A PAGAR', 'Yape', 'OP-77', 'PAGADO', '¡GRACIAS POR SU VISITA!'] as $texto) {
+        foreach (['RUC: 10181327401', 'COMPROBANTE DE CONSUMO', 'Nro. 0000001', 'Mesa: 05', 'DNI: 12345678',
+            'Atendido por: Juan', 'Picante de camaron', '110.00', 'S/ 55.00 c/u', 'TOTAL A PAGAR', 'Yape', 'OP-77', 'GRACIAS POR SU PREFERENCIA!!', 'Los mejores momentos se comparten en familia'] as $texto) {
             $this->assertStringContainsString($texto, $voucher);
         }
         $this->assertStringEndsWith("\x1D\x56\x42\x00", $voucher, 'El voucher debe terminar cortando el papel');
+        $this->assertStringNotContainsString('No válido', $voucher);
+        // Sin estado ni negrita (ESC E 1)
+        $this->assertStringNotContainsString('Estado', $voucher);
+        $this->assertStringNotContainsString("\x1B\x45\x01", app(TicketeraService::class)->voucher($this->recibo));
+        $this->actingAs($this->cajera)->get(route('recibos.show', $this->recibo->id))
+            ->assertDontSee('Estado:')
+            ->assertSee('.ticket, .ticket * { font-weight: normal !important; }', false);
     }
 
-    public function test_el_voucher_lleva_el_logo_arriba(): void
+    public function test_el_voucher_lleva_arriba_el_camaron_con_el_nombre_en_letra_de_adorno(): void
     {
         $logo = file_get_contents(resource_path('ticketera/logo.bin'));
-        $this->assertStringStartsWith("\x1D\x76\x30\x00", $logo, 'El logo es una imagen GS v 0');
+        $this->assertStringStartsWith("\x1D\x76\x30\x00", $logo, 'El encabezado es una imagen GS v 0');
 
         $bytes = app(TicketeraService::class)->voucher($this->recibo);
         $this->assertSame(1, substr_count($bytes, $logo));
-        $this->assertLessThan(strpos($bytes, 'CASA BLANCA'), strpos($bytes, $logo));
+        // El nombre ya va dentro de la imagen: no se repite en texto antes del comprobante
+        $this->assertLessThan(strpos($bytes, 'RUC:'), strpos($bytes, $logo));
+        $this->assertStringNotContainsString('CASA BLANCA', substr($bytes, 0, strpos($bytes, 'COMPROBANTE')));
 
-        $this->actingAs($this->cajera)->get(route('recibos.show', $this->recibo->id))->assertSee('img/logo-claro.webp');
+        $this->actingAs($this->cajera)->get(route('recibos.show', $this->recibo->id))
+            ->assertSee('img/camaron.webp')
+            ->assertSee('Restaurante Campestre')
+            ->assertSee('Casa Blanca')
+            ->assertDontSee('No válido como comprobante de pago');
     }
 
     public function test_sin_ticketera_configurada_no_se_intenta_imprimir(): void

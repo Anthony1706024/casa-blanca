@@ -27,15 +27,14 @@ class CartaController extends Controller
     public function store(Request $request, VentaService $ventas)
     {
         $datos = $request->validate([
-            'dni' => 'required|digits:8',
+            'dni' => 'nullable|digits:8',
             'mesa' => 'required|string|max:20',
             'cliente_nombre' => 'nullable|string|max:150',
             'observacion' => 'nullable|string|max:255',
             'items' => 'required|array',
             'items.*' => 'integer|min:0|max:99',
         ], [
-            'dni.required' => 'Ingresa tu DNI para registrar el pedido.',
-            'dni.digits' => 'El DNI debe tener 8 dígitos.',
+            'dni.digits' => 'El DNI debe tener 8 dígitos (o déjalo vacío).',
             'mesa.required' => 'Indica el número de tu mesa.',
             'mesa.max' => 'El número de mesa admite como máximo 20 caracteres.',
             'items.required' => 'Agrega al menos un producto a tu pedido.',

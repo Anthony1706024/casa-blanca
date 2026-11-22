@@ -2,7 +2,7 @@
 
 @section('titulo', 'Impresiones')
 @section('icono', 'fa-print')
-@section('subtitulo', 'Vouchers y tickets de cocina enviados a la ticketera (últimos 50)')
+@section('subtitulo', 'Cuentas, vouchers y tickets de cocina enviados a la ticketera (últimos 50)')
 @section('ancho', 'max-w-5xl')
 
 @section('acciones')
@@ -55,7 +55,7 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-black">
-                            <i class="fas {{ $impresion->tipo === \App\Models\Impresion::VOUCHER ? 'fa-receipt' : 'fa-utensils' }} text-gray-400 mr-1"></i>
+                            <i class="fas {{ ['voucher' => 'fa-receipt', 'cuenta' => 'fa-file-invoice-dollar'][$impresion->tipo] ?? 'fa-utensils' }} text-gray-400 mr-1"></i>
                             {{ $impresion->descripcion }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">

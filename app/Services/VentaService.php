@@ -31,7 +31,7 @@ class VentaService
             $total = $productos->sum(fn ($producto) => $producto->precio_venta * $cantidades[$producto->id]);
 
             $pedido = Pedido::create([
-                'dni' => $datos['dni'],
+                'dni' => $datos['dni'] ?? null,
                 'cliente_nombre' => $datos['cliente_nombre'] ?? null,
                 'mesa' => $datos['mesa'] ?? null,
                 'observacion' => $datos['observacion'] ?? null,

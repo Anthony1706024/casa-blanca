@@ -30,10 +30,6 @@ class TicketeraService
 
     private const IZQUIERDA = "\x1B\x61\x00";
 
-    private const NEGRITA = "\x1B\x45\x01";
-
-    private const SIN_NEGRITA = "\x1B\x45\x00";
-
     private const GRANDE = "\x1D\x21\x11";        // doble alto y ancho
 
     private const ALTO = "\x1D\x21\x01";          // doble alto, mismo ancho
@@ -104,7 +100,7 @@ class TicketeraService
             $this->comando(self::INICIAR.self::TABLA_850);
 
             // Cocina y mesa en grande: es lo primero que se lee
-            $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
+            $this->comando(self::CENTRO.self::GRANDE);
             $this->linea(mb_strtoupper(Producto::COCINAS[$cocina] ?? $cocina));
             $this->comando(self::NORMAL);
             if ($lote['adicional']) {
@@ -113,14 +109,13 @@ class TicketeraService
             if ($lote['reimpresion']) {
                 $this->linea('(REIMPRESIÓN)');
             }
-            $this->comando(self::SIN_NEGRITA);
             $this->linea("Ticket {$numero} de {$total}");
             $this->comando(self::IZQUIERDA);
             $this->raya('=');
 
-            $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
+            $this->comando(self::CENTRO.self::GRANDE);
             $this->linea($pedido->mesa ? 'MESA '.$pedido->mesa : 'SIN MESA');
-            $this->comando(self::NORMAL.self::SIN_NEGRITA.self::IZQUIERDA);
+            $this->comando(self::NORMAL.self::IZQUIERDA);
             $this->dosLados('Pedido: '.$pedido->numero, $ahora->format('d/m').' '.$hora);
             if ($pedido->cliente_nombre) {
                 $this->linea('Cliente: '.$pedido->cliente_nombre);
@@ -129,7 +124,7 @@ class TicketeraService
             $this->raya();
 
             // Productos: cantidad y nombre en doble alto para leerlos de lejos
-            $this->comando(self::NEGRITA.self::ALTO);
+            $this->comando(self::ALTO);
             foreach ($lineas as $linea) {
                 $cantidad = str_pad($linea['cantidad'], 2, ' ', STR_PAD_LEFT).' x ';
                 $partes = explode("\n", wordwrap($linea['nombre'], $this->columnas - mb_strlen($cantidad), "\n", true));
@@ -138,11 +133,11 @@ class TicketeraService
                     $this->linea(str_repeat(' ', mb_strlen($cantidad)).$parte);
                 }
             }
-            $this->comando(self::NORMAL.self::SIN_NEGRITA);
+            $this->comando(self::NORMAL);
             $this->raya();
 
             if ($pedido->observacion) {
-                $this->negrita('OBSERVACIÓN:');
+                $this->linea('OBSERVACIÓN:');
                 $this->linea(wordwrap($pedido->observacion, $this->columnas, "\n", true));
                 $this->raya();
             }
@@ -192,63 +187,97 @@ class TicketeraService
         }
     }
 
-    // Arma los bytes del voucher. Público para poder revisarlo en pruebas.
+    // Arma los bytes del voucher (comprobante de un pedido ya cobrado). Público para poder revisarlo en pruebas.
     public function voucher(Recibo $recibo): string
     {
         $recibo->loadMissing(['pedido.items', 'pedido.mozo', 'pagos', 'cajero']);
+
+        return $this->comprobante($recibo->pedido, $recibo);
+    }
+
+    // Cuenta para llevar a la mesa: lo mismo que el voucher pero sin cobrar (el pedido sigue pendiente)
+    public function cuenta(Pedido $pedido): string
+    {
+        $pedido->loadMissing(['items', 'mozo']);
+
+        return $this->comprobante($pedido, null);
+    }
+
+    public function imprimirCuenta(Pedido $pedido): bool
+    {
+        return $this->configurada() && $this->enviar(
+            $this->cuenta($pedido),
+            Impresion::CUENTA,
+            "Cuenta {$pedido->numero}".($pedido->mesa ? " – Mesa {$pedido->mesa}" : ''),
+            null,
+            $pedido->id,
+        );
+    }
+
+    // Con $recibo: comprobante de consumo pagado. Sin $recibo: cuenta pendiente de pago.
+    private function comprobante(Pedido $pedido, ?Recibo $recibo): string
+    {
         $negocio = Contenido::valores();
-        $pedido = $recibo->pedido;
-        $fecha = $recibo->created_at;
-        $atendio = $pedido->mozo ?? $recibo->cajero;
+        $fecha = $recibo ? $recibo->created_at : now();
+        $atendio = $pedido->mozo ?? $recibo?->cajero;
 
         $this->columnas = $negocio['ticket_ancho'] === '58' ? 32 : 48;
         $this->datos = self::INICIAR.self::TABLA_850;
 
-        // Encabezado: logo y datos del negocio
-        $this->logo();
-        $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
-        $this->linea($negocio['ticket_nombre']);
-        $this->comando(self::NORMAL);
-        if ($negocio['ticket_subtitulo']) {
-            $this->linea($negocio['ticket_subtitulo']);
+        // Encabezado: el camarón con "Restaurante Campestre / Casa Blanca" en letra de adorno (logo.bin).
+        // Sin esa imagen se imprime el nombre en texto.
+        $this->comando(self::CENTRO);
+        if (! $this->logo()) {
+            $this->comando(self::GRANDE);
+            $this->linea($negocio['ticket_nombre']);
+            $this->comando(self::NORMAL);
+            if ($negocio['ticket_subtitulo']) {
+                $this->linea($negocio['ticket_subtitulo']);
+            }
         }
-        $this->comando(self::SIN_NEGRITA);
         if ($negocio['ticket_lugar']) {
             $this->linea($negocio['ticket_lugar']);
         }
         if ($negocio['ticket_ruc']) {
-            $this->negrita('RUC: '.$negocio['ticket_ruc']);
+            $this->linea('RUC: '.$negocio['ticket_ruc']);
         }
         $this->comando(self::IZQUIERDA);
         $this->raya();
 
         $this->comando(self::CENTRO);
-        $this->negrita('COMPROBANTE DE CONSUMO');
-        $this->linea('No válido como comprobante de pago');
-        $this->negrita('N.º '.str_pad($recibo->id, 7, '0', STR_PAD_LEFT));
+        if ($recibo) {
+            $this->linea('COMPROBANTE DE CONSUMO');
+            $this->linea('N.º '.str_pad($recibo->id, 7, '0', STR_PAD_LEFT));
+        } else {
+            $this->comando(self::GRANDE);
+            $this->linea('CUENTA');
+            $this->comando(self::NORMAL);
+        }
         $this->comando(self::IZQUIERDA);
         $this->raya();
 
-        // Datos del pedido
+        // Datos del pedido. DNI y nombre solo si el cliente los dio.
         $hora = $fecha->format('h:i').($fecha->format('A') === 'AM' ? ' a. m.' : ' p. m.');
         $this->dosLados('Fecha: '.$fecha->format('d/m/Y'), 'Hora: '.$hora);
-        $this->dosLados('Recibo: '.$recibo->numero, 'Pedido: '.$pedido->numero);
+        $recibo
+            ? $this->dosLados('Recibo: '.$recibo->numero, 'Pedido: '.$pedido->numero)
+            : $this->linea('Pedido: '.$pedido->numero);
         if ($pedido->mesa) {
             $this->linea('Mesa: '.str_pad($pedido->mesa, 2, '0', STR_PAD_LEFT));
         }
         if ($pedido->cliente_nombre) {
             $this->linea('Cliente: '.$pedido->cliente_nombre);
         }
-        $this->linea('DNI: '.$pedido->dni);
+        if ($pedido->dni) {
+            $this->linea('DNI: '.$pedido->dni);
+        }
         if ($atendio) {
             $this->linea('Atendido por: '.Str::before($atendio->name.' ', ' '));
         }
         $this->raya();
 
         // Productos
-        $this->comando(self::NEGRITA);
         $this->dosLados('Cant. Descripción', 'Importe');
-        $this->comando(self::SIN_NEGRITA);
         $this->raya();
         foreach ($pedido->items as $item) {
             $importe = number_format($item->subtotal, 2);
@@ -267,34 +296,34 @@ class TicketeraService
         $this->raya('=');
 
         // Total
-        $this->comando(self::CENTRO.self::NEGRITA);
+        $this->comando(self::CENTRO);
         $this->linea('TOTAL A PAGAR');
         $this->comando(self::GRANDE);
-        $this->linea('S/ '.number_format($recibo->total, 2));
-        $this->comando(self::NORMAL.self::SIN_NEGRITA.self::IZQUIERDA);
+        $this->linea('S/ '.number_format($recibo ? $recibo->total : $pedido->total, 2));
+        $this->comando(self::NORMAL.self::IZQUIERDA);
         $this->raya('=');
 
-        // Pagos
-        foreach ($recibo->pagos as $pago) {
-            $metodo = 'Método de pago: '.$pago->metodo_nombre;
-            $recibo->pagos->count() > 1
-                ? $this->dosLados($metodo, 'S/ '.number_format($pago->monto, 2))
-                : $this->linea($metodo);
-            if ($pago->numero_operacion) {
-                $this->linea('N.º de operación: '.$pago->numero_operacion);
+        // Pagos (solo en el comprobante). No se imprime el estado del pedido.
+        if ($recibo) {
+            foreach ($recibo->pagos as $pago) {
+                $metodo = 'Método de pago: '.$pago->metodo_nombre;
+                $recibo->pagos->count() > 1
+                    ? $this->dosLados($metodo, 'S/ '.number_format($pago->monto, 2))
+                    : $this->linea($metodo);
+                if ($pago->numero_operacion) {
+                    $this->linea('N.º de operación: '.$pago->numero_operacion);
+                }
             }
+            $this->raya();
         }
-        $this->linea('Estado: PAGADO');
-        $this->raya();
 
         // Despedida
         $this->comando(self::CENTRO);
-        $this->negrita('¡GRACIAS POR SU VISITA!');
+        $this->linea('¡¡GRACIAS POR SU PREFERENCIA!!');
+        // Mensaje final editable en el admin (Contenido: ticket_mensaje)
         if ($negocio['ticket_mensaje']) {
-            $this->linea($negocio['ticket_mensaje']);
+            $this->linea(wordwrap($negocio['ticket_mensaje'], $this->columnas, "\n", true));
         }
-        $this->linea('');
-        $this->linea('Restaurante Campestre '.Str::title(mb_strtolower($negocio['ticket_nombre'])));
         $this->linea("\n\n\n");
         $this->comando(self::CORTAR);
 
@@ -306,27 +335,40 @@ class TicketeraService
         $this->datos .= $bytes;
     }
 
-    // Logo centrado en 1 bit (comando GS v 0). Se genera con resources/ticketera/generar-logo.ps1
-    private function logo(): void
+    // Encabezado en 1 bit (comando GS v 0), centrado. Se genera con resources/ticketera/generar-logo.ps1.
+    // Devuelve false si no existe la imagen.
+    private function logo(): bool
     {
         $archivo = resource_path('ticketera/logo.bin');
-        if (is_file($archivo)) {
-            $this->comando(self::CENTRO.file_get_contents($archivo)."\n".self::IZQUIERDA);
+        if (! is_file($archivo)) {
+            return false;
         }
+
+        $this->comando(self::CENTRO.file_get_contents($archivo)."\n");
+
+        return true;
     }
 
     private function linea(string $texto): void
     {
-        // Rayas largas (–) no existen en la tabla 850
-        $texto = str_replace(['–', '—'], '-', $texto);
-        $this->datos .= mb_convert_encoding($texto, 'CP850', 'UTF-8')."\n";
+        $this->datos .= self::sinTildes($texto)."\n";
     }
 
-    private function negrita(string $texto): void
+    // La ticketera no imprime las letras con tilde ni la ñ (salía "Descripcin", "camarn"):
+    // se mandan sin tilde, que siempre se leen bien.
+    public static function sinTildes(string $texto): string
     {
-        $this->comando(self::NEGRITA);
-        $this->linea($texto);
-        $this->comando(self::SIN_NEGRITA);
+        $texto = str_replace(['N.º', 'N.°', '–', '—'], ['Nro.', 'Nro.', '-', '-'], $texto);
+        $texto = strtr($texto, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
+            'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+            '¡' => '', '¿' => '', 'º' => 'o', 'ª' => 'a', '°' => 'o', '×' => 'x', '·' => '-',
+            '“' => '"', '”' => '"', '‘' => "'", '’' => "'",
+        ]);
+
+        // Cualquier otro carácter fuera de ASCII se cambia por "?" en vez de romper la línea
+        return preg_replace('/[^\x20-\x7E\n]/', '?', $texto);
     }
 
     private function raya(string $caracter = '-'): void

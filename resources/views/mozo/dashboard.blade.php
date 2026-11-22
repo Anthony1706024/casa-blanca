@@ -11,18 +11,20 @@
 @endsection
 
 @section('contenido')
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" data-auto="tarjetas">
         <a href="{{ route('mozo.pedidos.index', ['estado' => 'pendiente']) }}" class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm hover:border-orange-300 transition">
-            <p class="text-gray-500 text-sm">Pedidos pendientes de pago</p>
+            <p class="text-gray-500 text-sm">Mis pedidos por cobrar</p>
             <p class="text-black text-3xl font-bold mt-1">{{ $pendientes }}</p>
         </a>
-        <div class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+        <a href="{{ route('mozo.pedidos.index') }}" class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm hover:border-orange-300 transition">
             <p class="text-gray-500 text-sm">Mis pedidos de hoy</p>
             <p class="text-black text-3xl font-bold mt-1">{{ $misPedidosHoy }}</p>
-        </div>
-        <div class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-            <p class="text-gray-500 text-sm">Prepedidos de clientes por pagar</p>
-            <p class="text-black text-3xl font-bold mt-1">{{ $pedidosCliente }}</p>
-        </div>
+        </a>
+        <a href="{{ route('mozo.pedidos.index', ['estado' => 'pagado']) }}" class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm hover:border-orange-300 transition">
+            <p class="text-gray-500 text-sm">Mis pedidos cobrados hoy</p>
+            <p class="text-black text-3xl font-bold mt-1">{{ $pagadosHoy }}</p>
+        </a>
     </div>
+
+    @include('partials.auto-actualizar')
 @endsection

@@ -2,7 +2,7 @@
 
 @section('titulo', 'Pedidos')
 @section('icono', 'fa-clipboard-list')
-@section('subtitulo', 'Pedidos del mozo y prepedidos de clientes')
+@section('subtitulo', 'Tus pedidos. El estado se actualiza solo cuando caja los cobra')
 
 @section('acciones')
     <a href="{{ route('mozo.pedidos.create') }}" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition text-sm shadow-sm">
@@ -30,7 +30,7 @@
         </button>
     </form>
 
-    <div class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm overflow-x-auto">
+    <div class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm overflow-x-auto" data-auto="lista">
         <table class="w-full text-left text-sm">
             <thead>
                 <tr class="border-b border-gray-200 text-gray-500">
@@ -45,12 +45,12 @@
             </thead>
             <tbody>
                 @forelse($pedidos as $pedido)
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition align-top">
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition align-top" data-pedido-id="{{ $pedido->id }}">
                         <td class="py-3">
                             <span class="text-orange-600 font-mono font-medium">{{ $pedido->numero }}</span>
                             <div class="text-gray-400 text-xs">{{ $pedido->created_at->format('d/m H:i') }} · {{ $pedido->mozo->name ?? 'Cliente' }}</div>
                         </td>
-                        <td class="py-3 text-black">{{ $pedido->dni }}</td>
+                        <td class="py-3 text-black">{{ $pedido->dni ?? '—' }}</td>
                         <td class="py-3 text-black font-semibold">{{ $pedido->mesa ?? '-' }}</td>
                         <td class="py-3 text-gray-600">
                             @foreach($pedido->items as $item)
@@ -69,10 +69,12 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No hay pedidos.</td></tr>
+                    <tr><td colspan="7" class="py-8 text-center text-gray-400">No tienes pedidos{{ request('dni') || request('estado') ? ' con esos filtros' : '' }}.</td></tr>
                 @endforelse
             </tbody>
         </table>
         <div class="mt-4">{{ $pedidos->links() }}</div>
     </div>
+
+    @include('partials.auto-actualizar')
 @endsection

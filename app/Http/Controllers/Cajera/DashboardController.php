@@ -10,11 +10,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $pendientes = Pedido::where('estado', Pedido::PENDIENTE)->count();
+        $idsPendientes = Pedido::where('estado', Pedido::PENDIENTE)->pluck('id');
+        $pendientes = $idsPendientes->count();
         $porCobrar = Pedido::where('estado', Pedido::PENDIENTE)->sum('total');
         $cobradoHoy = Recibo::whereDate('created_at', today())->sum('total');
         $recibosHoy = Recibo::whereDate('created_at', today())->count();
 
-        return view('cajera.dashboard', compact('pendientes', 'porCobrar', 'cobradoHoy', 'recibosHoy'));
+        return view('cajera.dashboard', compact('pendientes', 'porCobrar', 'cobradoHoy', 'recibosHoy', 'idsPendientes'));
     }
 }

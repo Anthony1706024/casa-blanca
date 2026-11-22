@@ -4,7 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-// Pedido que registra el personal (mozo o caja). La mesa es opcional: en caja puede ser para llevar.
+// Pedido que registra el personal (mozo o caja). Solo la mesa es obligatoria:
+// hay clientes que no quieren dar su DNI ni su nombre.
 class PedidoPersonalRequest extends FormRequest
 {
     public function authorize(): bool
@@ -15,9 +16,9 @@ class PedidoPersonalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'dni' => 'required|digits:8',
+            'dni' => 'nullable|digits:8',
             'cliente_nombre' => 'nullable|string|max:150',
-            'mesa' => 'nullable|string|max:20',
+            'mesa' => 'required|string|max:20',
             'observacion' => 'nullable|string|max:255',
             'items' => 'required|array',
             'items.*' => 'integer|min:0|max:99',
@@ -27,8 +28,8 @@ class PedidoPersonalRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'dni.required' => 'El DNI del cliente es obligatorio.',
-            'dni.digits' => 'El DNI debe tener 8 dígitos.',
+            'dni.digits' => 'El DNI debe tener 8 dígitos (o déjalo vacío).',
+            'mesa.required' => 'Indica el número de mesa.',
             'items.required' => 'Selecciona al menos un producto.',
         ];
     }

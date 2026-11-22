@@ -55,7 +55,7 @@ class ComandaTest extends TestCase
             'dni' => '74084122',
             'cliente_nombre' => 'Anthony Palma',
             'mesa' => '30',
-            'observacion' => 'el pato sin ají',
+            'observacion' => 'el pato sin aji',
             'items' => [$this->ceviche->id => 1, $this->cerveza->id => 2, $this->cecina->id => 1],
         ])->assertSessionHasNoErrors();
 
@@ -95,7 +95,7 @@ class ComandaTest extends TestCase
         $this->assertStringContainsString(' 2 x Pilsen Callao', $this->texto($segundo));
         $this->assertStringContainsString('Cecina de cerdo', $this->texto($tercero));
 
-        foreach (['MESA 30', 'PD-000001', 'Cliente: Anthony Palma', 'Atiende: María', 'el pato sin ají', 'Ticket 1 de 3'] as $dato) {
+        foreach (['MESA 30', 'PD-000001', 'Cliente: Anthony Palma', 'Atiende: Maria', 'el pato sin aji', 'Ticket 1 de 3'] as $dato) {
             $this->assertStringContainsString($dato, $texto);
         }
     }

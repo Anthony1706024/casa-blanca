@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Mozo;
 use App\Http\Controllers\Controller;
 use App\Models\Pedido;
 
+// El mozo solo ve sus propios pedidos; caja ve todos
 class DashboardController extends Controller
 {
     public function index()
     {
-        $pendientes = Pedido::where('estado', Pedido::PENDIENTE)->count();
-        $misPedidosHoy = Pedido::where('mozo_id', auth()->id())->whereDate('created_at', today())->count();
-        $pedidosCliente = Pedido::where('estado', Pedido::PENDIENTE)->where('origen', 'cliente')->count();
+        $mios = fn () => Pedido::where('mozo_id', auth()->id());
 
-        return view('mozo.dashboard', compact('pendientes', 'misPedidosHoy', 'pedidosCliente'));
+        $pendientes = $mios()->where('estado', Pedido::PENDIENTE)->count();
+        $misPedidosHoy = $mios()->whereDate('created_at', today())->count();
+        $pagadosHoy = $mios()->where('estado', Pedido::PAGADO)->whereDate('updated_at', today())->count();
+
+        return view('mozo.dashboard', compact('pendientes', 'misPedidosHoy', 'pagadosHoy'));
     }
 }

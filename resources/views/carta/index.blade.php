@@ -138,7 +138,7 @@
 
             <div class="mt-6 bg-white rounded-2xl border px-5 py-4 text-left flex gap-4 items-start" style="border-color: var(--linea)">
                 <span class="mas flex-shrink-0" aria-hidden="true">+</span>
-                <p class="text-sm" style="color: var(--gris)">Toca <b class="text-black">+</b> para agregar un plato a tu pedido. Cuando termines, abre <b class="text-black">Mi pedido</b>, escribe tu DNI y tu número de mesa, y envíalo. Pagas en caja.</p>
+                <p class="text-sm" style="color: var(--gris)">Toca <b class="text-black">+</b> para agregar un plato a tu pedido. Cuando termines, abre <b class="text-black">Mi pedido</b>, escribe tu número de mesa y envíalo. Pagas en caja.</p>
             </div>
         </section>
 
@@ -277,12 +277,12 @@
                 <div id="datosCliente" class="px-5 pb-5 grid grid-cols-2 gap-3" hidden>
                     <h3 class="col-span-2 espaciado text-xs font-semibold pt-1">Tus datos</h3>
                     <div>
-                        <label class="etiqueta" for="dni">DNI <span class="text-red-500">*</span></label>
-                        <input type="text" id="dni" name="dni" value="{{ old('dni') }}" class="campo" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" autocomplete="off" required>
-                    </div>
-                    <div>
                         <label class="etiqueta" for="mesa">N.° de mesa <span class="text-red-500">*</span></label>
                         <input type="text" id="mesa" name="mesa" value="{{ old('mesa') }}" class="campo" maxlength="20" placeholder="Ej: 12" autocomplete="off" required>
+                    </div>
+                    <div>
+                        <label class="etiqueta" for="dni">DNI <span class="text-gray-400 font-normal">(opcional)</span></label>
+                        <input type="text" id="dni" name="dni" value="{{ old('dni') }}" class="campo" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" autocomplete="off">
                     </div>
                     <div class="col-span-2">
                         <label class="etiqueta" for="cliente_nombre">Nombre</label>
@@ -297,7 +297,7 @@
                     <button type="submit" id="enviarPedido" class="col-span-2 mt-1 boton-verde disabled:opacity-60 py-3.5 rounded-full font-bold shadow-sm">
                         <i class="fas fa-paper-plane mr-2"></i> Enviar pedido
                     </button>
-                    <p class="col-span-2 text-center text-gray-400 text-xs">Pagas en caja con tu DNI. Los precios finales los confirma caja.</p>
+                    <p class="col-span-2 text-center text-gray-400 text-xs">Pagas en caja. Los precios finales los confirma caja.</p>
                 </div>
             </form>
         </div>
@@ -315,7 +315,13 @@
                     <div class="rounded-xl p-4" style="background: #f1f5ea"><dt class="espaciado text-[.65rem]" style="color: var(--gris)">Mesa</dt><dd class="text-2xl font-bold text-black">{{ $registrado['mesa'] }}</dd></div>
                     <div class="rounded-xl p-4" style="background: #f1f5ea"><dt class="espaciado text-[.65rem]" style="color: var(--gris)">Total</dt><dd class="text-2xl font-bold text-black">S/ {{ $registrado['total'] }}</dd></div>
                 </dl>
-                <p class="text-gray-600">Acércate a caja con tu DNI <b>{{ $registrado['dni'] }}</b> para pagar.</p>
+                <p class="text-gray-600">
+                    @if($registrado['dni'])
+                        Acércate a caja con tu DNI <b>{{ $registrado['dni'] }}</b> o tu número de mesa para pagar.
+                    @else
+                        Acércate a caja con tu número de mesa para pagar.
+                    @endif
+                </p>
                 <button type="button" id="cerrarConfirmacion" class="mt-6 w-full text-white py-3.5 rounded-full font-bold" style="background: var(--tinta)">Seguir viendo la carta</button>
             </div>
         </div>
@@ -502,8 +508,8 @@
                 const mesa = document.getElementById('mesa');
                 let mensaje = '';
                 if (!Object.keys(carrito).length) mensaje = 'Agrega al menos un plato a tu pedido.';
-                else if (!/^\d{8}$/.test(dni.value.trim())) mensaje = 'Ingresa tu DNI de 8 dígitos.';
                 else if (!mesa.value.trim()) mensaje = 'Indica el número de tu mesa.';
+                else if (dni.value.trim() && !/^\d{8}$/.test(dni.value.trim())) mensaje = 'El DNI debe tener 8 dígitos, o déjalo vacío.';
 
                 if (mensaje) {
                     evento.preventDefault();

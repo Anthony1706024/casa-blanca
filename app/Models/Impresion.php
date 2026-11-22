@@ -28,6 +28,9 @@ class Impresion extends Model
 
     public const COMANDA = 'comanda';
 
+    // Cuenta para llevar a la mesa, antes de cobrar
+    public const CUENTA = 'cuenta';
+
     protected $fillable = ['tipo', 'recibo_id', 'pedido_id', 'descripcion', 'datos', 'estado', 'intentos', 'error', 'tomada_en', 'impresa_en'];
 
     protected $casts = [

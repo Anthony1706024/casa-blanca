@@ -28,8 +28,14 @@
         .marca { font-weight: 800; margin-top: 2px; }
         .mesa { font-size: 1.7em; font-weight: 900; margin: 4px 0; }
         .nota { font-size: .85em; }
-        .linea { border-top: 1px dashed #000; margin: 7px 0; }
-        .doble { border-top: 2px solid #000; margin: 7px 0; }
+        /* Letra de ticketera con ceros lisos y separadores hechos con guiones, como los imprime la ticketera */
+        .ticket { font-family: 'Lucida Console', 'Lucida Sans Typewriter', 'Courier New', monospace; letter-spacing: -.03em; font-size: {{ $ancho === '58' ? '10.5px' : '12px' }}; }
+        .ticket .fila > span { white-space: nowrap; }
+        /* Nada en negrita, como en la ticketera */
+        .ticket, .ticket * { font-weight: normal !important; }
+        .linea, .doble { overflow: hidden; white-space: nowrap; line-height: 1; margin: 5px 0; }
+        .linea::before { content: '----------------------------------------------------------------------------------------'; }
+        .doble::before { content: '========================================================================================'; }
         .fila { display: flex; justify-content: space-between; gap: 8px; }
         .item { display: flex; gap: 8px; font-size: 1.35em; font-weight: 800; line-height: 1.3; margin: 3px 0; }
         .item .cant { min-width: 2.4em; }
