@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Producto;
+use Illuminate\Support\Collection;
 
 // ==========================================
 // TICKETS DE COCINA (comandas): un ticket por cada cocina de Producto::COCINAS,
@@ -51,6 +52,16 @@ class ComandaService
         foreach ($lote['items'] as $id => $cantidad) {
             PedidoItem::whereKey($id)->where('cantidad_enviada', '<', $cantidad)->update(['cantidad_enviada' => $cantidad]);
         }
+    }
+
+    // Adicionales de pedidos pendientes que todavía no salieron en un ticket de cocina: [item_id => pedido_id].
+    // Caja los recibe como aviso para imprimirlos.
+    public function adicionalesPorImprimir(): Collection
+    {
+        return PedidoItem::where('tipo', PedidoItem::ADICIONAL)
+            ->whereColumn('cantidad_enviada', '<', 'cantidad')
+            ->whereHas('pedido', fn ($q) => $q->where('estado', Pedido::PENDIENTE))
+            ->pluck('pedido_id', 'id');
     }
 
     public function porEnviar(Pedido $pedido): int

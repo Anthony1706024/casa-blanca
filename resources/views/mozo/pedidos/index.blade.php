@@ -54,18 +54,22 @@
                         <td class="py-3 text-black font-semibold">{{ $pedido->mesa ?? '-' }}</td>
                         <td class="py-3 text-gray-600">
                             @foreach($pedido->items as $item)
-                                <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}</div>
+                                <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}@if($item->esAdicional()) <span class="text-amber-700 text-xs font-semibold">(adicional)</span>@endif</div>
                             @endforeach
                         </td>
                         <td class="py-3 text-right text-black font-semibold whitespace-nowrap">S/ {{ number_format($pedido->total, 2) }}</td>
                         <td class="py-3 text-center">@include('pedidos._estado', ['estado' => $pedido->estado])</td>
                         <td class="py-3 text-right">
-                            @if($pedido->estado === \App\Models\Pedido::PENDIENTE)
-                                <form method="POST" action="{{ route('mozo.pedidos.anular', $pedido->id) }}" onsubmit="return confirm('¿Anular este pedido?')">
-                                    @csrf
-                                    <button type="submit" title="Anular" class="text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded"><i class="fas fa-ban"></i></button>
-                                </form>
-                            @endif
+                            <div class="flex justify-end gap-1">
+                                <a href="{{ route('mozo.pedidos.show', $pedido->id) }}" title="Ver y cambiar el pedido" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded"><i class="fas fa-eye"></i></a>
+                                @if($pedido->estado === \App\Models\Pedido::PENDIENTE)
+                                    <a href="{{ route('mozo.pedidos.adicionales', $pedido->id) }}" title="Agregar adicionales" class="text-orange-600 bg-orange-50 hover:bg-orange-100 px-2 py-1 rounded"><i class="fas fa-plus"></i></a>
+                                    <form method="POST" action="{{ route('mozo.pedidos.anular', $pedido->id) }}" onsubmit="return confirm('¿Anular este pedido?')">
+                                        @csrf
+                                        <button type="submit" title="Anular" class="text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty

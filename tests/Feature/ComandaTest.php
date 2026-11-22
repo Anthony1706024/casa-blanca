@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Categoria;
 use App\Models\Pedido;
+use App\Models\PedidoItem;
 use App\Models\Producto;
 use App\Models\Role;
 use App\Models\User;
@@ -183,10 +184,20 @@ class ComandaTest extends TestCase
         ])->assertSessionHasNoErrors()->assertRedirect(route('cajera.pedidos.show', $this->pedido->id));
 
         $pedido = $this->pedido->fresh('items');
-        // Misma línea, misma mesa: 2 + 1 cervezas, sin una línea nueva
-        $this->assertCount(3, $pedido->items);
-        $this->assertSame(3, $pedido->items->firstWhere('producto_id', $this->cerveza->id)->cantidad);
+        // El adicional va en su propia línea, marcada como adicional; la original no cambia
+        $this->assertCount(4, $pedido->items);
+        $cervezas = $pedido->items->where('producto_id', $this->cerveza->id)->values();
+        $this->assertSame([2, 1], $cervezas->pluck('cantidad')->all());
+        $this->assertSame([PedidoItem::PEDIDO, PedidoItem::ADICIONAL], $cervezas->pluck('tipo')->all());
         $this->assertEqualsWithDelta(50 + 36 + 45, (float) $pedido->total, 0.001);
+
+        // Otro adicional igual antes de imprimir se suma a esa misma línea de adicional
+        $this->post(route('cajera.pedidos.adicionales.store', $this->pedido->id), ['items' => [$this->cerveza->id => 1]]);
+        $pedido = $this->pedido->fresh('items');
+        $this->assertCount(4, $pedido->items);
+        $this->assertSame(2, $pedido->items->where('tipo', PedidoItem::ADICIONAL)->first()->cantidad);
+        $this->post(route('cajera.pedidos.items.quitar', [$pedido->id, $pedido->items->where('tipo', PedidoItem::ADICIONAL)->first()->id]), ['cantidad' => 1]);
+        $pedido = $this->pedido->fresh('items');
         // Agregar no descuenta stock: eso pasa al cobrar
         $this->assertSame(10, (int) $this->cerveza->fresh()->stock);
 
@@ -285,6 +296,90 @@ class ComandaTest extends TestCase
         $this->pedido->update(['estado' => Pedido::PAGADO]);
         $this->post(route('cajera.pedidos.items.quitar', [$this->pedido->id, $ceviche->id]), ['cantidad' => 1])
             ->assertSessionHasErrors('pedido');
+    }
+
+    public function test_el_mozo_agrega_adicionales_y_caja_imprime_solo_lo_nuevo(): void
+    {
+        $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
+            'mesa' => '31',
+            'items' => [$this->ceviche->id => 1, $this->cerveza->id => 1],
+        ])->assertSessionHasNoErrors();
+        $pedido = Pedido::where('mesa', '31')->sole();
+
+        // Caja imprime el pedido original
+        $servicio = app(ComandaService::class);
+        $servicio->marcarEnviado($servicio->lote($pedido));
+
+        // El mozo abre su pedido y agrega un adicional
+        $this->get(route('mozo.pedidos.index'))->assertSee(route('mozo.pedidos.show', $pedido->id), false);
+        $this->get(route('mozo.pedidos.show', $pedido->id))->assertOk()->assertSee('Agregar adicionales')->assertSee('En cocina');
+        $this->get(route('mozo.pedidos.adicionales', $pedido->id))->assertOk()->assertSee('Agregar al pedido');
+        $this->post(route('mozo.pedidos.adicionales.store', $pedido->id), ['items' => [$this->cerveza->id => 2]])
+            ->assertSessionHasNoErrors()->assertRedirect(route('mozo.pedidos.show', $pedido->id));
+
+        $adicional = $pedido->items()->where('tipo', PedidoItem::ADICIONAL)->sole();
+        $this->assertSame(2, $adicional->cantidad);
+        $this->get(route('mozo.pedidos.show', $pedido->id))->assertSee('Adicional')->assertSee('Por enviar a cocina');
+
+        // Caja se entera: aviso del adicional, con el pedido para resaltarlo
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))
+            ->assertSee('data-aviso-id="a'.$adicional->id.'"', false)
+            ->assertSee('data-aviso-tipo="adicional" data-aviso-pedido="'.$pedido->id.'"', false)
+            ->assertSee('Adicional por imprimir (2)');
+        $this->get(route('cajera.dashboard'))->assertSee('data-aviso-id="a'.$adicional->id.'"', false);
+
+        // Y al imprimir sale solo el adicional
+        $lote = $servicio->lote($pedido->fresh());
+        $this->assertSame(['bebidas' => [['cantidad' => 2, 'nombre' => 'Pilsen Callao']]], $lote['tickets']);
+        $this->assertTrue($lote['adicional']);
+        $servicio->marcarEnviado($lote);
+        $this->get(route('cajera.pedidos.index'))->assertDontSee('data-aviso-id="a'.$adicional->id.'"', false);
+
+        // El mozo también puede quitar de su pedido
+        $this->actingAs($this->mozo)->post(route('mozo.pedidos.items.quitar', [$pedido->id, $adicional->id]), ['cantidad' => 1])
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'Ya estaba en cocina'));
+        $this->assertSame(1, $adicional->fresh()->cantidad);
+    }
+
+    public function test_el_mozo_no_toca_los_pedidos_de_otro(): void
+    {
+        // $this->pedido es de caja (mesa 30): para el mozo no existe
+        $this->actingAs($this->mozo)->get(route('mozo.pedidos.show', $this->pedido->id))->assertNotFound();
+        $this->get(route('mozo.pedidos.adicionales', $this->pedido->id))->assertNotFound();
+        $this->post(route('mozo.pedidos.adicionales.store', $this->pedido->id), ['items' => [$this->cerveza->id => 1]])->assertNotFound();
+        $item = $this->pedido->items()->first();
+        $this->post(route('mozo.pedidos.items.quitar', [$this->pedido->id, $item->id]))->assertNotFound();
+        $this->assertNotNull($item->fresh());
+    }
+
+    public function test_una_mesa_no_puede_tener_dos_pedidos_pendientes(): void
+    {
+        // La mesa 30 ya tiene un pedido pendiente (el de caja); "030" y " 30 " son la misma mesa
+        foreach (['30', '030', ' 30 '] as $mesa) {
+            $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), [
+                'mesa' => $mesa,
+                'items' => [$this->cerveza->id => 1],
+            ])->assertSessionHasErrors(['mesa' => 'La mesa '.trim($mesa).' ya tiene un pedido pendiente ('.$this->pedido->numero.'). Agrega lo nuevo como adicional a ese pedido.']);
+        }
+
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.store'), ['mesa' => '30', 'items' => [$this->cerveza->id => 1]])
+            ->assertSessionHasErrors('mesa');
+
+        auth()->logout();
+        $this->post(route('carta.store'), ['mesa' => '30', 'items' => [$this->cerveza->id => 1]])
+            ->assertSessionHasErrors(['mesa' => 'La mesa 30 ya tiene un pedido abierto. Pídele al mozo que agregue lo que quieras a ese pedido.']);
+
+        $this->assertSame(1, Pedido::count());
+
+        // Cuando el pedido se cobra, la mesa queda libre
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', $this->pedido->id), ['pagos' => [['metodo' => 'efectivo', 'monto' => 119]]])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($this->mozo)->post(route('mozo.pedidos.store'), ['mesa' => '30', 'items' => [$this->cerveza->id => 1]])
+            ->assertSessionHasNoErrors();
+
+        // Otra mesa distinta no tiene problema
+        $this->post(route('mozo.pedidos.store'), ['mesa' => '300', 'items' => [$this->cerveza->id => 1]])->assertSessionHasNoErrors();
+        $this->assertSame(3, Pedido::count());
     }
 
     public function test_el_mozo_no_usa_las_pantallas_de_caja(): void

@@ -31,8 +31,9 @@ class CobroController extends Controller
 
         $pedidos = $query->paginate(15)->withQueryString();
         $idsPendientes = Pedido::where('estado', Pedido::PENDIENTE)->pluck('id');
+        $adicionales = app(ComandaService::class)->adicionalesPorImprimir();
 
-        return view('cajera.pedidos.index', compact('pedidos', 'idsPendientes'));
+        return view('cajera.pedidos.index', compact('pedidos', 'idsPendientes', 'adicionales'));
     }
 
     // ==========================================
@@ -69,7 +70,7 @@ class CobroController extends Controller
 
         $productos = Producto::disponiblesParaVenta();
 
-        return view('cajera.pedidos.adicionales', compact('pedido', 'productos'));
+        return view('pedidos.adicionales', ['pedido' => $pedido, 'productos' => $productos, 'prefijo' => 'cajera']);
     }
 
     public function adicionalesStore(Request $request, $id, VentaService $ventas)

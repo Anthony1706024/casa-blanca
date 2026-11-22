@@ -131,6 +131,11 @@ Route::middleware(['auth', 'checkrole:mozo'])->prefix('mozo')->name('mozo.')->gr
     Route::get('/pedidos/crear', [MozoPedido::class, 'create'])->name('pedidos.create');
     Route::post('/pedidos', [MozoPedido::class, 'store'])->name('pedidos.store');
     Route::post('/pedidos/{id}/anular', [MozoPedido::class, 'anular'])->name('pedidos.anular');
+    // Sus pedidos: ver, agregar adicionales y quitar platos ("crear" va antes de {id})
+    Route::get('/pedidos/{id}', [MozoPedido::class, 'show'])->whereNumber('id')->name('pedidos.show');
+    Route::get('/pedidos/{id}/adicionales', [MozoPedido::class, 'adicionales'])->name('pedidos.adicionales');
+    Route::post('/pedidos/{id}/adicionales', [MozoPedido::class, 'adicionalesStore'])->name('pedidos.adicionales.store');
+    Route::post('/pedidos/{id}/items/{item}/quitar', [MozoPedido::class, 'quitarItem'])->name('pedidos.items.quitar');
 });
 
 // 3. CAJERA - solo role_id = 3

@@ -38,7 +38,7 @@
     @endif
 
     {{-- Todos los pendientes, aunque estén en otra página: con esto se avisan los pedidos nuevos --}}
-    <div data-auto="avisos" hidden>@foreach($idsPendientes as $idPendiente)<span data-aviso-id="{{ $idPendiente }}"></span>@endforeach</div>
+    @include('cajera._avisos')
 
     <div class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm overflow-x-auto" data-auto="lista">
         <table class="w-full text-left text-sm">
@@ -58,6 +58,15 @@
                         <td class="py-3">
                             <span class="text-orange-600 font-mono font-medium">{{ $pedido->numero }}</span>
                             <div class="text-gray-400 text-xs">{{ $pedido->created_at->format('d/m H:i') }} · {{ $pedido->mozo->name ?? 'Cliente' }}</div>
+                            @php
+                                $porImprimir = $pedido->items->sum(fn ($item) => $item->por_enviar);
+                                $adicionalPorImprimir = $pedido->items->contains(fn ($item) => $item->esAdicional() && $item->por_enviar > 0);
+                            @endphp
+                            @if($porImprimir > 0)
+                                <span class="inline-block mt-1 text-[11px] font-bold rounded px-1.5 py-0.5 {{ $adicionalPorImprimir ? 'bg-amber-200 text-amber-900' : 'bg-gray-100 text-gray-700' }}">
+                                    <i class="fas fa-print mr-0.5"></i> {{ $adicionalPorImprimir ? 'Adicional por imprimir' : 'Por imprimir' }} ({{ $porImprimir }})
+                                </span>
+                            @endif
                         </td>
                         <td class="py-3 text-black font-semibold">
                             {{ $pedido->dni ?? '—' }}
@@ -66,7 +75,7 @@
                         <td class="py-3 text-black font-semibold">{{ $pedido->mesa ?? '-' }}</td>
                         <td class="py-3 text-gray-600">
                             @foreach($pedido->items as $item)
-                                <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}</div>
+                                <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}@if($item->esAdicional()) <span class="text-amber-700 text-xs font-semibold">(adicional)</span>@endif</div>
                             @endforeach
                         </td>
                         <td class="py-3 text-right text-black font-semibold whitespace-nowrap">S/ {{ number_format($pedido->total, 2) }}</td>

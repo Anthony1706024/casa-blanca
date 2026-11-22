@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Insumo;
 use App\Models\Pedido;
+use App\Models\PedidoItem;
 use App\Models\Producto;
 use App\Models\Recibo;
 use App\Models\User;
@@ -28,6 +29,11 @@ class VentaService
         $this->verificarDisponibilidad($productos->map(fn ($producto) => [$producto, $cantidades[$producto->id]]));
 
         return DB::transaction(function () use ($datos, $cantidades, $origen, $mozo, $productos) {
+            // Una mesa, un pedido pendiente: lo nuevo se agrega como adicional a ese pedido
+            if (filled($datos['mesa'] ?? null)) {
+                $this->verificarMesaLibre($datos['mesa'], $origen);
+            }
+
             $total = $productos->sum(fn ($producto) => $producto->precio_venta * $cantidades[$producto->id]);
 
             $pedido = Pedido::create([
@@ -55,10 +61,42 @@ class VentaService
         });
     }
 
+    // Pedido pendiente de una mesa, si lo hay. La mesa se compara sin espacios, mayúsculas ni ceros
+    // a la izquierda ("05" es la mesa "5").
+    public function pedidoPendienteDeMesa(string $mesa, ?int $excepto = null): ?Pedido
+    {
+        $buscada = self::normalizarMesa($mesa);
+
+        return Pedido::where('estado', Pedido::PENDIENTE)
+            ->whereNotNull('mesa')
+            ->when($excepto, fn ($q) => $q->whereKeyNot($excepto))
+            ->lockForUpdate()
+            ->get()
+            ->first(fn ($pedido) => self::normalizarMesa($pedido->mesa) === $buscada);
+    }
+
+    public static function normalizarMesa(string $mesa): string
+    {
+        $mesa = mb_strtolower(preg_replace('/\s+/', ' ', trim($mesa)));
+
+        return preg_match('/^\d+$/', $mesa) ? (string) (int) $mesa : $mesa;
+    }
+
+    private function verificarMesaLibre(string $mesa, string $origen): void
+    {
+        $existente = $this->pedidoPendienteDeMesa($mesa);
+
+        if ($existente) {
+            throw ValidationException::withMessages(['mesa' => $origen === 'cliente'
+                ? "La mesa {$mesa} ya tiene un pedido abierto. Pídele al mozo que agregue lo que quieras a ese pedido."
+                : "La mesa {$mesa} ya tiene un pedido pendiente ({$existente->numero}). Agrega lo nuevo como adicional a ese pedido."]);
+        }
+    }
+
     // ==========================================
     // AGREGAR ADICIONALES A UN PEDIDO PENDIENTE (misma mesa, mismo cobro)
-    // Si el producto ya está en el pedido con el mismo precio, se suma a esa línea;
-    // lo ya enviado a cocina no cambia, así el próximo ticket lleva solo lo nuevo.
+    // Van en su propia línea marcada como adicional. Si ese mismo adicional todavía no salió
+    // a cocina, se suma a su línea; lo ya enviado no cambia, así el ticket lleva solo lo nuevo.
     // ==========================================
     public function agregarItems(int $pedidoId, array $cantidades): Pedido
     {
@@ -87,6 +125,8 @@ class VentaService
             foreach ($productos as $producto) {
                 $cantidad = $cantidades[$producto->id];
                 $existente = $items->first(fn ($item) => $item->producto_id === $producto->id
+                    && $item->tipo === PedidoItem::ADICIONAL
+                    && (int) $item->cantidad_enviada === 0
                     && abs((float) $item->precio_unitario - (float) $producto->precio_venta) < 0.005);
 
                 if ($existente) {
@@ -100,6 +140,7 @@ class VentaService
                         'producto_nombre' => $producto->nombre,
                         'precio_unitario' => $producto->precio_venta,
                         'cantidad' => $cantidad,
+                        'tipo' => PedidoItem::ADICIONAL,
                         'subtotal' => round($producto->precio_venta * $cantidad, 2),
                     ]);
                 }

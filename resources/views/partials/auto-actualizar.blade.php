@@ -1,8 +1,9 @@
 {{-- ==========================================
      ACTUALIZACIÓN AUTOMÁTICA: cada pocos segundos vuelve a pedir esta misma página
      y reemplaza solo los bloques marcados con data-auto="nombre" (no toca buscadores ni formularios).
-     Con $avisar = true, los ids nuevos de [data-aviso-id] suenan, salen en un aviso y en el título de la pestaña,
-     y las filas [data-pedido-id] de esos pedidos se resaltan un minuto.
+     Con $avisar = true, los ids nuevos de [data-aviso-id] suenan, salen en un aviso ("pedido nuevo" o, con
+     data-aviso-tipo="adicional", "adicional por imprimir") y en el título de la pestaña, y las filas
+     [data-pedido-id] del pedido indicado en data-aviso-pedido se resaltan un minuto.
      Uso: @include('partials.auto-actualizar', ['avisar' => true, 'intervalo' => 5])
 ========================================== --}}
 <div id="avisoNuevos" class="hidden fixed bottom-4 right-4 z-50 bg-gray-900 text-white rounded-lg shadow-lg px-4 py-3 text-sm font-semibold" role="status" aria-live="polite"></div>
@@ -22,8 +23,9 @@
         let audio = null;
         let temporizador = null;
 
-        const idsAviso = () => new Set([...document.querySelectorAll('[data-aviso-id]')].map(e => e.dataset.avisoId));
-        let conocidos = idsAviso();
+        // Cada aviso: id único, tipo (pedido | adicional) y el pedido al que pertenece (para resaltar su fila)
+        const avisosActuales = () => new Map([...document.querySelectorAll('[data-aviso-id]')].map(e => [e.dataset.avisoId, e]));
+        let conocidos = new Set(avisosActuales().keys());
 
         // El navegador solo deja sonar después de un clic en la página
         document.addEventListener('click', function () {
@@ -45,9 +47,12 @@
             });
         }
 
-        function mostrarAviso(cantidad) {
+        function mostrarAviso(pedidos, adicionales) {
             const aviso = document.getElementById('avisoNuevos');
-            aviso.innerHTML = '<i class="fas fa-bell text-amber-400 mr-2"></i>' + (cantidad === 1 ? '1 pedido nuevo' : cantidad + ' pedidos nuevos');
+            const partes = [];
+            if (pedidos) partes.push(pedidos === 1 ? '1 pedido nuevo' : pedidos + ' pedidos nuevos');
+            if (adicionales) partes.push(adicionales === 1 ? '1 adicional por imprimir' : adicionales + ' adicionales por imprimir');
+            aviso.innerHTML = '<i class="fas fa-bell text-amber-400 mr-2"></i>' + partes.join(' · ');
             aviso.classList.remove('hidden');
             clearTimeout(aviso._ocultar);
             aviso._ocultar = setTimeout(() => aviso.classList.add('hidden'), 8000);
@@ -84,14 +89,15 @@
                     if (actual && actual.innerHTML !== nuevo.innerHTML) actual.innerHTML = nuevo.innerHTML;
                 });
 
-                const ahora = idsAviso();
-                const llegaron = [...ahora].filter(id => !conocidos.has(id));
-                conocidos = new Set([...conocidos, ...ahora]);
+                const ahora = avisosActuales();
+                const llegaron = [...ahora.keys()].filter(id => !conocidos.has(id));
+                conocidos = new Set([...conocidos, ...ahora.keys()]);
                 if (avisar && llegaron.length) {
-                    llegaron.forEach(id => resaltados.set(id, Date.now()));
+                    const adicionales = llegaron.filter(id => ahora.get(id).dataset.avisoTipo === 'adicional').length;
+                    llegaron.forEach(id => resaltados.set(ahora.get(id).dataset.avisoPedido || id, Date.now()));
                     sinLeer += llegaron.length;
                     document.title = '(' + sinLeer + ') ' + tituloBase;
-                    mostrarAviso(llegaron.length);
+                    mostrarAviso(llegaron.length - adicionales, adicionales);
                     sonar();
                 }
                 marcarResaltados();

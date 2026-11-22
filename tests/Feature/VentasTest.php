@@ -559,7 +559,7 @@ class VentasTest extends TestCase
         foreach (['cajera.pedidos.index', 'cajera.dashboard'] as $ruta) {
             $this->actingAs($this->cajera)->get(route($ruta))->assertOk()
                 ->assertSee('data-auto="avisos"', false)
-                ->assertSee('data-aviso-id="'.$pedido->id.'"', false)
+                ->assertSee('data-aviso-id="p'.$pedido->id.'" data-aviso-tipo="pedido" data-aviso-pedido="'.$pedido->id.'"', false)
                 ->assertSee('id="avisoNuevos"', false);
         }
 

@@ -21,7 +21,7 @@
         </button>
     </form>
 
-    <div data-auto="avisos" hidden>@foreach($idsPendientes as $idPendiente)<span data-aviso-id="{{ $idPendiente }}"></span>@endforeach</div>
+    @include('cajera._avisos')
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-auto="tarjetas">
         <a href="{{ route('cajera.pedidos.index') }}" class="bg-white rounded-lg p-6 border border-gray-200 shadow-sm hover:border-orange-300 transition">
