@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Cajera;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PedidoPersonalRequest;
 use App\Models\Pago;
 use App\Models\Pedido;
+use App\Models\Producto;
 use App\Models\Recibo;
 use App\Services\TicketeraService;
 use App\Services\VentaService;
@@ -27,6 +29,26 @@ class CobroController extends Controller
         $pedidos = $query->paginate(15)->withQueryString();
 
         return view('cajera.pedidos.index', compact('pedidos'));
+    }
+
+    // ==========================================
+    // NUEVO PEDIDO DESDE CAJA: se registra y pasa directo al cobro
+    // ==========================================
+    public function create()
+    {
+        $productos = Producto::disponiblesParaVenta();
+
+        return view('cajera.pedidos.create', compact('productos'));
+    }
+
+    public function store(PedidoPersonalRequest $request, VentaService $ventas)
+    {
+        $datos = $request->validated();
+
+        $pedido = $ventas->crearPedido($datos, $datos['items'], 'caja', $request->user());
+
+        return redirect()->route('cajera.pedidos.show', $pedido->id)
+            ->with('success', "Pedido {$pedido->numero} registrado. Ahora registra el cobro.");
     }
 
     // ==========================================

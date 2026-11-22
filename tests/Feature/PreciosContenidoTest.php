@@ -336,7 +336,7 @@ class PreciosContenidoTest extends TestCase
         $plato = $this->platoDePato();
         $aceite = Insumo::where('nombre', 'Aceite')->first();
 
-        $this->post(route('carta.store'), ['dni' => '12345678', 'items' => [$plato->id => 1]])->assertSessionHasNoErrors();
+        $this->post(route('carta.store'), ['dni' => '12345678', 'mesa' => '3', 'items' => [$plato->id => 1]])->assertSessionHasNoErrors();
         $this->actingAs($this->cajera)->post(route('cajera.pedidos.cobrar', Pedido::first()->id), ['pagos' => [
             ['metodo' => 'efectivo', 'monto' => 36],
         ]])->assertSessionHasNoErrors();
@@ -496,6 +496,7 @@ class PreciosContenidoTest extends TestCase
         $porciones = Categoria::where('nombre', 'Porciones')->firstOrFail();
         Producto::create(['codigo' => 'PO1', 'nombre' => 'Porción de papas', 'tipo' => 'directo', 'categoria_id' => $porciones->id, 'stock' => 5, 'precio_venta' => 8]);
 
-        $this->get(route('carta.index'))->assertOk()->assertSee('Porciones')->assertSee('Porción de papas');
+        // En la carta impresa la sección de porciones se llama "Guarniciones"
+        $this->get(route('carta.index'))->assertOk()->assertSee('Guarniciones')->assertSee('Porción de papas');
     }
 }

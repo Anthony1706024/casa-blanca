@@ -1,5 +1,5 @@
 <!-- ==========================================
-     SELECTOR DE PRODUCTOS: lo usan el mozo y la carta pública
+     SELECTOR DE PRODUCTOS: lo usan el mozo y la caja (la carta pública tiene su propio carrito)
      El precio es referencial: el total real lo calcula el servidor
 ========================================== -->
 <div class="relative mb-6">
@@ -57,7 +57,7 @@
         <p class="text-2xl font-bold text-black">S/ <span id="resumenTotal">0.00</span></p>
     </div>
     <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold transition text-sm shadow-sm">
-        <i class="fas fa-paper-plane mr-2"></i> Enviar Pedido
+        <i class="fas {{ $iconoBoton ?? 'fa-paper-plane' }} mr-2"></i> {{ $textoBoton ?? 'Enviar Pedido' }}
     </button>
 </div>
 

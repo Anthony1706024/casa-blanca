@@ -2,7 +2,13 @@
 
 @section('titulo', 'Panel de Caja')
 @section('icono', 'fa-cash-register')
-@section('subtitulo', 'Busca el pedido por DNI y registra el cobro')
+@section('subtitulo', 'Registra pedidos, búscalos por DNI y cóbralos')
+
+@section('acciones')
+    <a href="{{ route('cajera.pedidos.create') }}" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition text-sm shadow-sm">
+        <i class="fas fa-plus-circle mr-1"></i> Nuevo pedido
+    </a>
+@endsection
 
 @section('contenido')
     <form method="GET" action="{{ route('cajera.pedidos.index') }}" class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-4 sm:items-end">

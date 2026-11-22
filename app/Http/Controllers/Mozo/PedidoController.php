@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mozo;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PedidoPersonalRequest;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Services\VentaService;
@@ -34,20 +35,9 @@ class PedidoController extends Controller
         return view('mozo.pedidos.create', compact('productos'));
     }
 
-    public function store(Request $request, VentaService $ventas)
+    public function store(PedidoPersonalRequest $request, VentaService $ventas)
     {
-        $datos = $request->validate([
-            'dni' => 'required|digits:8',
-            'cliente_nombre' => 'nullable|string|max:150',
-            'mesa' => 'nullable|string|max:20',
-            'observacion' => 'nullable|string|max:255',
-            'items' => 'required|array',
-            'items.*' => 'integer|min:0|max:99',
-        ], [
-            'dni.required' => 'El DNI del cliente es obligatorio.',
-            'dni.digits' => 'El DNI debe tener 8 dígitos.',
-            'items.required' => 'Selecciona al menos un producto.',
-        ]);
+        $datos = $request->validated();
 
         $pedido = $ventas->crearPedido($datos, $datos['items'], 'mozo', $request->user());
 

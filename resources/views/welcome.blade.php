@@ -354,7 +354,7 @@
                 @if($contenido['hero_texto'])<p class="portada-texto">{{ $contenido['hero_texto'] }}</p>@endif
                 <div class="botones">
                     <a href="{{ route('carta.index') }}" class="boton boton-terracota"><i class="fas fa-utensils"></i> Hacer mi pedido</a>
-                    <a href="{{ $cartaPdf }}" target="_blank" rel="noopener" class="boton boton-claro"><i class="fas fa-file-pdf"></i> Ver carta (PDF)</a>
+                    <a href="{{ route('carta.index') }}" class="boton boton-claro"><i class="fas fa-book-open"></i> Ver carta</a>
                 </div>
             </div>
 
@@ -442,7 +442,7 @@
                         @endif
                         <div class="botones">
                             <a href="{{ route('carta.index') }}" class="boton boton-verde"><i class="fas fa-utensils"></i> Hacer mi pedido</a>
-                            <a href="{{ $cartaPdf }}" target="_blank" rel="noopener" class="boton boton-borde"><i class="fas fa-file-pdf"></i> Ver carta</a>
+                            <a href="{{ route('carta.index') }}" class="boton boton-borde"><i class="fas fa-book-open"></i> Ver carta</a>
                         </div>
                     </div>
                 </div>
@@ -663,7 +663,7 @@
                     <article class="paso aparecer">
                         <div class="icono-circulo"><i class="fas fa-utensils"></i></div>
                         <h3>Haz tu pedido</h3>
-                        <p>Elige tus platos desde la carta, déjanos tu DNI y paga en caja cuando llegues.</p>
+                        <p>Elige tus platos desde la carta, déjanos tu DNI y tu número de mesa, y paga en caja.</p>
                         <a href="{{ route('carta.index') }}" class="boton boton-terracota">Hacer mi pedido</a>
                     </article>
                     @if($whatsapp)
@@ -765,8 +765,8 @@
         <a href="{{ $wa('Hola, quisiera información sobre Casa Blanca.') }}" target="_blank" rel="noopener" class="flotante" aria-label="Escríbenos por WhatsApp"><i class="fab fa-whatsapp"></i></a>
     @endif
     <nav class="barra-movil" aria-label="Accesos rápidos">
-        <a href="{{ route('carta.index') }}"><i class="fas fa-utensils"></i> Pedir</a>
-        <a href="{{ $cartaPdf }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Carta</a>
+        <a href="{{ route('carta.index') }}"><i class="fas fa-utensils"></i> Carta y pedido</a>
+        <a href="{{ $cartaPdf }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> PDF</a>
         @if($whatsapp)<a href="{{ $wa('Hola, quisiera reservar una mesa en Casa Blanca.') }}" target="_blank" rel="noopener" class="wa"><i class="fab fa-whatsapp"></i> Reservar</a>@endif
     </nav>
 

@@ -8,8 +8,10 @@ use App\Models\Insumo;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Role;
+use App\Models\Subcategoria;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class VentasTest extends TestCase
@@ -146,11 +148,13 @@ class VentasTest extends TestCase
 
         $this->post(route('carta.store'), [
             'dni' => '87654321',
+            'mesa' => ' 12 ',
             'items' => [$this->plato->id => 2],
         ])->assertSessionHasNoErrors()->assertRedirect(route('carta.index'));
 
         $pedido = Pedido::firstOrFail();
         $this->assertSame('cliente', $pedido->origen);
+        $this->assertSame('12', $pedido->mesa);
         $this->assertSame(Pedido::PENDIENTE, $pedido->estado);
         $this->assertEqualsWithDelta(50, (float) $pedido->total, 0.001);
         $this->assertEqualsWithDelta(1, (float) $this->arroz->fresh()->stock, 0.001);
@@ -170,6 +174,7 @@ class VentasTest extends TestCase
     {
         $this->post(route('carta.store'), [
             'dni' => '87654321',
+            'mesa' => '4',
             'items' => [$this->plato->id => 4],
         ])->assertSessionHasErrors('items');
 
@@ -180,8 +185,146 @@ class VentasTest extends TestCase
     {
         $this->post(route('carta.store'), [
             'dni' => '123',
+            'mesa' => '4',
             'items' => [$this->plato->id => 1],
         ])->assertSessionHasErrors('dni');
+    }
+
+    public function test_el_cliente_debe_indicar_su_mesa(): void
+    {
+        $this->post(route('carta.store'), [
+            'dni' => '87654321',
+            'mesa' => '   ',
+            'items' => [$this->plato->id => 1],
+        ])->assertSessionHasErrors('mesa');
+
+        $this->assertSame(0, Pedido::count());
+    }
+
+    public function test_la_carta_muestra_la_confirmacion_con_la_mesa(): void
+    {
+        $respuesta = $this->followingRedirects()->post(route('carta.store'), [
+            'dni' => '87654321',
+            'mesa' => '7',
+            'items' => [$this->plato->id => 1, $this->gaseosa->id => 1],
+        ]);
+
+        $pedido = Pedido::firstOrFail();
+
+        $respuesta->assertOk()
+            ->assertSee('¡Pedido enviado!')
+            ->assertSee($pedido->numero)
+            ->assertSee('S/ 30.00')
+            ->assertSee('87654321');
+
+        // La confirmación sale una sola vez
+        $this->get(route('carta.index'))->assertDontSee('¡Pedido enviado!');
+    }
+
+    public function test_la_carta_sigue_el_orden_de_la_carta_impresa_y_junta_personal_y_fuente(): void
+    {
+        $marinos = Categoria::create(['nombre' => 'Platos Marinos']);
+        $crear = fn ($sub, $nombre, $precio) => Producto::create([
+            'codigo' => Str::random(6), 'nombre' => $nombre, 'tipo' => 'directo', 'stock' => 9, 'precio_venta' => $precio,
+            'categoria_id' => $marinos->id,
+            'subcategoria_id' => Subcategoria::firstOrCreate(['nombre' => $sub, 'categoria_id' => $marinos->id])->id,
+        ]);
+
+        // Se crean en otro orden: la carta debe ponerlos como en el PDF
+        $fuente = $crear('Fuentes de Camarones', 'Fuente de ceviche de camarón', 110);
+        $personal = $crear('Camarones - Plato Personal', 'Ceviche de camarón', 55);
+        $crear('Shots de Leche de Tigre', 'Leche de Tigre Clásica', 30);
+        $sola = $crear('Fuentes de Camarones', 'Fuente de chupe de camarón', 100);
+
+        $html = $this->get(route('carta.index'))->assertOk()
+            ->assertSeeInOrder(['Shots de Leche de Tigre', 'Leche de Tigre Clásica', 'Nuestra Especialidad', 'Camarones', 'Ceviche de camarón', 'Personal', 'Fuente'])
+            ->getContent();
+
+        // Personal y fuente quedan en la misma fila, cada uno con su propio botón
+        $this->assertMatchesRegularExpression('/class="fila doble".*?data-id="'.$personal->id.'".*?data-id="'.$fuente->id.'"/s', $html);
+        // Una fuente sin plato personal sigue apareciendo sola
+        $this->assertStringContainsString('data-id="'.$sola->id.'"', $html);
+    }
+
+    public function test_la_carta_agrupa_por_categoria_y_tiene_carrito(): void
+    {
+        $bebidas = Categoria::create(['nombre' => 'Bebidas frías']);
+        $this->gaseosa->update(['categoria_id' => $bebidas->id]);
+
+        $this->get(route('carta.index'))->assertOk()
+            ->assertSeeInOrder(['Platos', 'Arroz con pollo', 'Bebidas frías', 'Gaseosa'])
+            ->assertSee('data-chip=', false)
+            ->assertSee('id="carrito"', false)
+            ->assertSee('data-max="3"', false)
+            ->assertSee('name="mesa"', false);
+    }
+
+    public function test_la_mesa_se_ve_en_las_listas_del_mozo_y_de_caja(): void
+    {
+        $this->post(route('carta.store'), [
+            'dni' => '87654321',
+            'mesa' => 'Terraza 9',
+            'items' => [$this->gaseosa->id => 1],
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->mozo)->get(route('mozo.pedidos.index'))->assertSee('Terraza 9');
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.index'))->assertSee('Terraza 9');
+    }
+
+    public function test_la_cajera_registra_un_pedido_y_pasa_al_cobro(): void
+    {
+        $this->actingAs($this->cajera)->get(route('cajera.pedidos.create'))->assertOk()
+            ->assertSee('Arroz con pollo')
+            ->assertSee('Guardar y cobrar');
+
+        $respuesta = $this->post(route('cajera.pedidos.store'), [
+            'dni' => '44556677',
+            'cliente_nombre' => 'Para llevar',
+            'items' => [$this->plato->id => 1, $this->gaseosa->id => 1],
+        ]);
+
+        $pedido = Pedido::firstOrFail();
+        $respuesta->assertSessionHasNoErrors()->assertRedirect(route('cajera.pedidos.show', $pedido->id));
+
+        $this->assertSame('caja', $pedido->origen);
+        $this->assertSame($this->cajera->id, $pedido->mozo_id);
+        $this->assertNull($pedido->mesa);
+        $this->assertEqualsWithDelta(30, (float) $pedido->total, 0.001);
+        // Registrar no descuenta stock: eso pasa al cobrar
+        $this->assertSame(5, (int) $this->gaseosa->fresh()->stock);
+
+        $this->get(route('cajera.pedidos.show', $pedido->id))->assertOk()->assertSee($this->cajera->name);
+
+        $this->post(route('cajera.pedidos.cobrar', $pedido->id), ['pagos' => [
+            ['metodo' => 'efectivo', 'monto' => 30],
+        ]])->assertSessionHasNoErrors();
+
+        $this->assertSame(Pedido::PAGADO, $pedido->fresh()->estado);
+        $this->assertSame(4, (int) $this->gaseosa->fresh()->stock);
+    }
+
+    public function test_la_cajera_no_registra_un_pedido_sin_dni_ni_productos(): void
+    {
+        $this->actingAs($this->cajera)->post(route('cajera.pedidos.store'), [
+            'dni' => '',
+            'items' => [$this->plato->id => 0],
+        ])->assertSessionHasErrors('dni');
+
+        $this->post(route('cajera.pedidos.store'), [
+            'dni' => '44556677',
+            'items' => [$this->plato->id => 0],
+        ])->assertSessionHasErrors('items');
+
+        $this->assertSame(0, Pedido::count());
+    }
+
+    public function test_el_mozo_no_entra_al_registro_de_caja(): void
+    {
+        $this->actingAs($this->mozo)->get(route('cajera.pedidos.create'))->assertForbidden();
+        $this->actingAs($this->mozo)->post(route('cajera.pedidos.store'), [
+            'dni' => '44556677',
+            'items' => [$this->gaseosa->id => 1],
+        ])->assertForbidden();
     }
 
     public function test_la_cajera_cobra_con_dos_pagos_y_se_descuenta_el_stock(): void
@@ -336,7 +479,7 @@ class VentasTest extends TestCase
             $this->actingAs($this->mozo)->get(route($ruta))->assertOk();
         }
 
-        foreach (['cajera.dashboard', 'cajera.pedidos.index', 'cajera.recibos.index'] as $ruta) {
+        foreach (['cajera.dashboard', 'cajera.pedidos.index', 'cajera.pedidos.create', 'cajera.recibos.index'] as $ruta) {
             $this->actingAs($this->cajera)->get(route($ruta))->assertOk();
         }
     }

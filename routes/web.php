@@ -130,8 +130,10 @@ Route::middleware(['auth', 'checkrole:mozo'])->prefix('mozo')->name('mozo.')->gr
 Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.')->group(function () {
     Route::get('/dashboard', [CajeraDashboard::class, 'index'])->name('dashboard');
 
-    // Cobros
+    // Cobros. "crear" va antes de {id} para que no se tome como un id.
     Route::get('/pedidos', [CobroController::class, 'index'])->name('pedidos.index');
+    Route::get('/pedidos/crear', [CobroController::class, 'create'])->name('pedidos.create');
+    Route::post('/pedidos', [CobroController::class, 'store'])->name('pedidos.store');
     Route::get('/pedidos/{id}', [CobroController::class, 'show'])->name('pedidos.show');
     Route::post('/pedidos/{id}/cobrar', [CobroController::class, 'cobrar'])->name('pedidos.cobrar');
     Route::post('/pedidos/{id}/anular', [CobroController::class, 'anular'])->name('pedidos.anular');

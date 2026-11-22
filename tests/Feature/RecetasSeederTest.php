@@ -56,6 +56,7 @@ class RecetasSeederTest extends TestCase
 
         $this->post(route('carta.store'), [
             'dni' => '12345678',
+            'mesa' => '3',
             'items' => [$this->ceviche->id => 2, $this->gaseosa->id => 1],
         ])->assertSessionHasNoErrors();
 

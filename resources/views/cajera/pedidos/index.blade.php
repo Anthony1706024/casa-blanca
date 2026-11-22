@@ -4,6 +4,12 @@
 @section('icono', 'fa-cash-register')
 @section('subtitulo', 'Busca por el DNI del cliente')
 
+@section('acciones')
+    <a href="{{ route('cajera.pedidos.create') }}" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition text-sm shadow-sm">
+        <i class="fas fa-plus-circle mr-1"></i> Nuevo pedido
+    </a>
+@endsection
+
 @section('contenido')
     <form method="GET" action="{{ route('cajera.pedidos.index') }}" class="bg-white rounded-lg p-4 md:p-6 border border-gray-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-4 sm:items-end">
         <div class="flex-1">
@@ -21,6 +27,7 @@
                 <tr class="border-b border-gray-200 text-gray-500">
                     <th class="pb-3 font-semibold">Pedido</th>
                     <th class="pb-3 font-semibold">DNI</th>
+                    <th class="pb-3 font-semibold">Mesa</th>
                     <th class="pb-3 font-semibold">Detalle</th>
                     <th class="pb-3 font-semibold text-right">Total</th>
                     <th class="pb-3"></th>
@@ -37,6 +44,7 @@
                             {{ $pedido->dni }}
                             @if($pedido->cliente_nombre)<div class="text-gray-400 text-xs font-normal">{{ $pedido->cliente_nombre }}</div>@endif
                         </td>
+                        <td class="py-3 text-black font-semibold">{{ $pedido->mesa ?? '-' }}</td>
                         <td class="py-3 text-gray-600">
                             @foreach($pedido->items as $item)
                                 <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}</div>
@@ -50,7 +58,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-8 text-center text-gray-400">No hay pedidos pendientes{{ request('dni') ? ' para ese DNI' : '' }}.</td></tr>
+                    <tr><td colspan="6"class="py-8 text-center text-gray-400">No hay pedidos pendientes{{ request('dni') ? ' para ese DNI' : '' }}.</td></tr>
                 @endforelse
             </tbody>
         </table>

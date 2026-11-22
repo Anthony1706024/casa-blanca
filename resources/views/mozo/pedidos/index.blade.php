@@ -36,7 +36,7 @@
                 <tr class="border-b border-gray-200 text-gray-500">
                     <th class="pb-3 font-semibold">Pedido</th>
                     <th class="pb-3 font-semibold">DNI</th>
-                    <th class="pb-3 font-semibold hidden sm:table-cell">Mesa</th>
+                    <th class="pb-3 font-semibold">Mesa</th>
                     <th class="pb-3 font-semibold">Detalle</th>
                     <th class="pb-3 font-semibold text-right">Total</th>
                     <th class="pb-3 font-semibold text-center">Estado</th>
@@ -51,7 +51,7 @@
                             <div class="text-gray-400 text-xs">{{ $pedido->created_at->format('d/m H:i') }} · {{ $pedido->mozo->name ?? 'Cliente' }}</div>
                         </td>
                         <td class="py-3 text-black">{{ $pedido->dni }}</td>
-                        <td class="py-3 text-gray-600 hidden sm:table-cell">{{ $pedido->mesa ?? '-' }}</td>
+                        <td class="py-3 text-black font-semibold">{{ $pedido->mesa ?? '-' }}</td>
                         <td class="py-3 text-gray-600">
                             @foreach($pedido->items as $item)
                                 <div>{{ $item->cantidad }} × {{ $item->producto_nombre }}</div>

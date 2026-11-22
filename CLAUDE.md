@@ -51,7 +51,8 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 ### Sales flow
 
 - Insumos have a decimal `stock`. Products have a `tipo`: `directo` sells from `productos.stock`; `plato` has a recipe (`producto_insumo` pivot) and its `stock` column stays 0. `Producto::disponible` gives the sellable units either way, so load `insumos` first to avoid N+1.
-- An order (`pedidos`) starts as `pendiente` and comes from the mozo or from the public, unauthenticated `/carta` page (throttled). `pedido_items` copies the product name and price, so receipts stay stable.
+- An order (`pedidos`) starts as `pendiente` and comes from the mozo, from caja (`origen` `caja`, then it redirects straight to the charge screen) or from the public, unauthenticated `/carta` page (throttled). `mozo_id` holds whichever staff user registered it. `pedido_items` copies the product name and price, so receipts stay stable.
+- `/carta` is the customer menu, laid out like the printed PDF menu: `App\Services\CartaService::SECCIONES` maps PDF sections (titles, order) to category/subcategory names, pairs "Fuente de X" with "X" in one Personal/Fuente row, and appends anything unmatched by category so new products still show. It keeps a cart in `localStorage` (`casablanca.carrito`) and a cart modal where the customer enters DNI and table. `mesa` is required there but optional for staff, whose rules live in `PedidoPersonalRequest`. Staff screens use the `pedidos._selector` quantity grid instead.
 - Creating an order only checks availability. **Stock is discounted when the order is charged**, in `App\Services\VentaService::cobrar`, inside a transaction with row locks. All order, charge and cancel logic belongs in that service.
 - A charge takes 1 or 2 payments (`pagos`) that must add up to the order total. `numero_operacion` is required except for `efectivo`.
 - `PD-` and `RC-` numbers are accessors built from the id, not columns.
@@ -106,7 +107,7 @@ No view uses `@vite`, so the compiled `resources/css/app.css` and `resources/js/
 | --- | --- |
 | `admin/insumos`, `admin/ventas`, `mozo/*`, `cajera/*` | `@extends('layouts.panel', ['nav' => ...])`: shared white and orange layout with Tailwind and Font Awesome from CDNs, flash messages and a validation error summary. Use this for new panel pages. |
 | `admin/almacen`, `admin/subcategorias`, `admin/usuarios`, `admin/dashboard` | Older standalone HTML documents with the same CDNs and `@include('admin.nav')`. All are white and orange except `admin/dashboard`, which is still dark. |
-| `welcome`, `carta/index`, `recibos/show` | Standalone public home page (own CSS, white theme, `img/logo-claro.png`), public menu and printable receipt. |
+| `welcome`, `carta/index`, `recibos/show` | Standalone public home page (own CSS, white theme, `img/logo-claro.png`), public menu with cart (Tailwind CDN; it forces `[hidden]` to win over Tailwind display classes) and printable receipt. |
 | `auth/login` | Standalone page with hand-written CSS only. |
 | `profile/*`, other `auth/*` | Stock Breeze `<x-app-layout>` / `<x-guest-layout>`. With no compiled CSS or JS loaded, Tailwind classes and Alpine behaviour do not apply here. |
 
