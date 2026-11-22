@@ -137,13 +137,10 @@ class ComandaTest extends TestCase
         Process::assertRanTimes(fn ($proceso) => true, 2);
     }
 
-    public function test_cada_ticket_de_cocina_lleva_el_logo(): void
+    public function test_los_tickets_de_cocina_no_llevan_logo(): void
     {
-        $logo = file_get_contents(resource_path('ticketera/logo.bin'));
-        $this->assertStringStartsWith("\x1D\x76\x30\x00", $logo, 'El logo es una imagen GS v 0');
-
         $bytes = app(TicketeraService::class)->comanda($this->pedido, app(ComandaService::class)->lote($this->pedido));
-        $this->assertSame(3, substr_count($bytes, $logo));
+        $this->assertStringNotContainsString("\x1D\x76\x30\x00", $bytes);
     }
 
     public function test_si_la_ticketera_falla_no_se_marca_como_enviado(): void
@@ -169,7 +166,7 @@ class ComandaTest extends TestCase
         $this->get(route('cajera.pedidos.comanda.ver', $this->pedido->id))->assertOk()
             ->assertSeeInOrder(['COCINA 1', 'Ceviche mixto', 'BEBIDAS Y TRAGOS', 'Pilsen Callao', 'COCINA 2', 'Cecina de cerdo'])
             ->assertSee('MESA 30')
-            ->assertSee('img/logo-claro.webp')
+            ->assertDontSee('img/logo-claro.webp')
             ->assertSee('Imprimir 3 tickets');
     }
 

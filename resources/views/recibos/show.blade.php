@@ -24,6 +24,7 @@
 
         /* El ticket: 80 mm de papel imprimen ~72 mm; 58 mm imprimen ~48 mm */
         .ticket { width: {{ $ancho === '58' ? '48mm' : '72mm' }}; margin: 0 auto 24px; background: #fff; padding: 5mm {{ $ancho === '58' ? '2mm' : '3mm' }}; font-size: {{ $ancho === '58' ? '11px' : '12.5px' }}; line-height: 1.35; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); }
+        .logo { display: block; width: 66%; margin: 0 auto 6px; filter: grayscale(1) contrast(1.4); }
         .centro { text-align: center; }
         .nombre { font-size: 1.6em; font-weight: 800; letter-spacing: .08em; }
         .subtitulo { font-weight: 700; letter-spacing: .05em; }
@@ -93,6 +94,7 @@
     @endif
 
     <div class="ticket">
+        <img src="{{ asset('img/logo-claro.webp') }}" alt="{{ $negocio['ticket_nombre'] }}" class="logo">
         <div class="centro">
             <div class="nombre">{{ $negocio['ticket_nombre'] }}</div>
             @if($negocio['ticket_subtitulo'])<div class="subtitulo">{{ $negocio['ticket_subtitulo'] }}</div>@endif

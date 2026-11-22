@@ -49,6 +49,18 @@ class TicketeraTest extends TestCase
         $this->assertStringEndsWith("\x1D\x56\x42\x00", $voucher, 'El voucher debe terminar cortando el papel');
     }
 
+    public function test_el_voucher_lleva_el_logo_arriba(): void
+    {
+        $logo = file_get_contents(resource_path('ticketera/logo.bin'));
+        $this->assertStringStartsWith("\x1D\x76\x30\x00", $logo, 'El logo es una imagen GS v 0');
+
+        $bytes = app(TicketeraService::class)->voucher($this->recibo);
+        $this->assertSame(1, substr_count($bytes, $logo));
+        $this->assertLessThan(strpos($bytes, 'CASA BLANCA'), strpos($bytes, $logo));
+
+        $this->actingAs($this->cajera)->get(route('recibos.show', $this->recibo->id))->assertSee('img/logo-claro.webp');
+    }
+
     public function test_sin_ticketera_configurada_no_se_intenta_imprimir(): void
     {
         Process::fake();

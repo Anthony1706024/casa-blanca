@@ -71,7 +71,6 @@ class TicketeraService
         foreach ($lote['tickets'] as $cocina => $lineas) {
             $numero++;
             $this->comando(self::INICIAR.self::TABLA_850);
-            $this->logo();
 
             // Cocina y mesa en grande: es lo primero que se lee
             $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
@@ -168,7 +167,8 @@ class TicketeraService
         $this->columnas = $negocio['ticket_ancho'] === '58' ? 32 : 48;
         $this->datos = self::INICIAR.self::TABLA_850;
 
-        // Encabezado
+        // Encabezado: logo y datos del negocio
+        $this->logo();
         $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
         $this->linea($negocio['ticket_nombre']);
         $this->comando(self::NORMAL);

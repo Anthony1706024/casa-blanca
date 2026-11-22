@@ -23,7 +23,6 @@
 
         .ticket { width: {{ $ancho === '58' ? '48mm' : '72mm' }}; margin: 0 auto 24px; background: #fff; padding: 5mm {{ $ancho === '58' ? '2mm' : '3mm' }}; font-size: {{ $ancho === '58' ? '12px' : '13.5px' }}; line-height: 1.35; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); page-break-after: always; break-after: page; }
         .ticket:last-of-type { page-break-after: auto; break-after: auto; }
-        .logo { display: block; width: 66%; margin: 0 auto 6px; filter: grayscale(1) contrast(1.4); }
         .centro { text-align: center; }
         .cocina { font-size: 1.9em; font-weight: 900; letter-spacing: .04em; }
         .marca { font-weight: 800; margin-top: 2px; }
@@ -98,7 +97,6 @@
         @foreach($lote['tickets'] as $cocina => $lineas)
             @php $numero++; @endphp
             <section class="ticket">
-                <img src="{{ asset('img/logo-claro.webp') }}" alt="Casa Blanca" class="logo">
                 <div class="centro">
                     <div class="cocina">{{ mb_strtoupper(\App\Models\Producto::COCINAS[$cocina] ?? $cocina) }}</div>
                     @if($lote['adicional'])<div class="marca">*** ADICIONAL ***</div>@endif
