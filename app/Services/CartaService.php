@@ -29,6 +29,7 @@ class CartaService
         ['chip' => 'Vinos', 'script' => null, 'titulo' => 'Vinos', 'categoria' => 'Vinos', 'subcategorias' => null],
         ['chip' => 'Cremoladas', 'script' => null, 'titulo' => 'Cremoladas', 'categoria' => 'Cremoladas', 'subcategorias' => null],
         ['chip' => 'Guarniciones', 'script' => null, 'titulo' => 'Guarniciones', 'categoria' => 'Porciones', 'subcategorias' => null],
+        ['chip' => 'Golosinas', 'script' => null, 'titulo' => 'Golosinas', 'categoria' => 'Golosinas', 'subcategorias' => null],
     ];
 
     private const PREFIJO_FUENTE = 'fuente de ';
