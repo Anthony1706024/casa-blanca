@@ -111,6 +111,17 @@
             <span class="text-sm font-medium">Impresiones</span>
         </a>
 
+        <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Finanzas</p>
+
+        <a href="{{ route('admin.ingresos.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.ingresos.*') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-chart-line w-5 text-center"></i>
+            <span class="text-sm font-medium">Ingresos Diarios</span>
+        </a>
+        <a href="{{ route('admin.egresos.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.egresos.*') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
+            <span class="text-sm font-medium">Egresos</span>
+        </a>
+
         <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Precios</p>
 
         <a href="{{ route('admin.precios.index') }}" 

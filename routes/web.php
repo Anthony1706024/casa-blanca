@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AlmacenController;
 use App\Http\Controllers\Admin\ContenidoController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Admin\EgresoController;
+use App\Http\Controllers\Admin\IngresoController;
 use App\Http\Controllers\Admin\InsumoController;
 use App\Http\Controllers\Admin\PrecioController;
 use App\Http\Controllers\Admin\UsuarioController;
@@ -105,6 +107,18 @@ Route::middleware(['auth', 'checkrole:admin'])->prefix('admin')->name('admin.')-
 
     // Ventas
     Route::get('/ventas', [VentaController::class, 'index'])->name('ventas.index');
+
+    // Finanzas: ingresos diarios y egresos (día, semana, mes, año o rango)
+    Route::get('/ingresos', [IngresoController::class, 'index'])->name('ingresos.index');
+    Route::get('/ingresos/exportar', [IngresoController::class, 'exportar'])->name('ingresos.exportar');
+    Route::get('/egresos', [EgresoController::class, 'index'])->name('egresos.index');
+    Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store');
+    Route::get('/egresos/exportar', [EgresoController::class, 'exportar'])->name('egresos.exportar');
+    Route::post('/egresos/categorias', [EgresoController::class, 'categoriasStore'])->name('egresos.categorias.store');
+    Route::delete('/egresos/categorias/{id}', [EgresoController::class, 'categoriasDestroy'])->name('egresos.categorias.destroy');
+    Route::get('/egresos/{id}/editar', [EgresoController::class, 'edit'])->name('egresos.edit');
+    Route::put('/egresos/{id}', [EgresoController::class, 'update'])->name('egresos.update');
+    Route::delete('/egresos/{id}', [EgresoController::class, 'destroy'])->name('egresos.destroy');
 
     // Precios
     Route::get('/precios', [PrecioController::class, 'index'])->name('precios.index');

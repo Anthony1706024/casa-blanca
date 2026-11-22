@@ -92,6 +92,12 @@ Production (Railway) data changes ship as data migrations, because Railway runs 
 - Sales never read the current price: `pedido_items` stores `precio_unitario` and `subtotal` when the order is created, and `recibos.total` when it is charged. Reports must use those columns, never `productos.precio_venta`.
 - `Producto`'s `updated` hook writes every `precio_venta` change to `producto_precios` with the user, whichever screen made it.
 
+### Finances (admin)
+
+- `admin.ingresos.index` ("Ingresos diarios") and `admin.egresos.index` share `App\Support\Periodo` (`?periodo=dia|semana|mes|anio|rango`, with `fecha` or `desde`/`hasta`; weeks run Monday to Sunday; a year or a range over 62 days is grouped by month) and `App\Services\FinanzasService`. Income comes from `recibos.total` and `pagos.monto` by `recibos.created_at`; the balance is income minus egresos of the same period.
+- Egresos (`Egreso`, `fecha` stored as a plain `Y-m-d` by its attribute mutator so SQLite and MySQL filter alike) belong to a `CategoriaEgreso` (`categorias_egreso`); the migration seeds the default types and the admin adds more from the egresos screen. A type with egresos cannot be deleted.
+- Both screens export CSV for Excel (`;`, UTF-8 BOM) and print with `window.print()` (the `.no-print` class hides the filters and the sidebar).
+
 ### Website content
 
 - `welcome.blade.php` is rendered by `InicioController` from `Contenido` (key/value texts, defined in `Contenido::CAMPOS`) and `SitioItem` (attractions, activities, events, gallery, testimonials). A section with no published items is hidden. The admin editor at `admin.contenido.index` is generated from those two constants, so a new field or item type needs no new screen.
