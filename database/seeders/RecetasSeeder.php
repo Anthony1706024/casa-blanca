@@ -132,6 +132,9 @@ class RecetasSeeder extends Seeder
         'Cervezas' => ['Pilsen Trujillo', 'Pilsen Callao', 'Cusqueña de trigo', 'Cusqueña negra', 'Pilsen Callao en lata', 'Heineken en lata', 'Corona', 'Wild', 'Hit'],
     ];
 
+    // Si se indica, solo se procesan estos productos (lo usa una migración que agrega productos nuevos)
+    public ?array $solo = null;
+
     public function run()
     {
         $recetas = $this->recetas();
@@ -146,6 +149,10 @@ class RecetasSeeder extends Seeder
         $recetas['Palta Fuerte'] = ['Palta Fuerte' => [1, false]];
         $recetas['Palta Choquette'] = ['Palta Choquette' => 1];
         $recetas['Piña Golden entera para llevar'] = ['Piña Golden entera' => 1];
+
+        if ($this->solo !== null) {
+            $recetas = array_intersect_key($recetas, array_flip($this->solo));
+        }
 
         DB::transaction(function () use ($recetas) {
             $insumos = $this->crearInsumos($recetas);
@@ -356,6 +363,7 @@ class RecetasSeeder extends Seeder
             'Sangría clásica' => $sangria,
             'Sangría red' => $sangria + ['Fresa' => 80],
             'Sangría hawaiana' => $sangria + ['Piña Golden' => 150],
+            'Jarra de sangría' => $sangria,
             'Peruanísimo' => ['Pisco' => 60, 'Maracuyá' => 40, 'Jarabe de goma' => 15, 'Hielo' => 100],
             'Machu Picchu' => ['Pisco' => 45, 'Naranja' => 100, 'Granadina' => 15, 'Crema de menta' => 15, 'Hielo' => 100],
             'Canario' => ['Pisco' => 60, 'Naranja' => 130, 'Jarabe de goma' => 10, 'Hielo' => 100],

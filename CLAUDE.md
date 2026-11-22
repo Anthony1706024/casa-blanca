@@ -31,6 +31,8 @@ php artisan db:seed --class=ContenidoWebSeeder   # default facilities for the ho
 php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for the menu; keeps existing stock and recipes
 ```
 
+Production (Railway) data changes ship as data migrations, because Railway runs `migrate` on deploy and there is no direct database access. They must be idempotent and do nothing on an empty database, so tests and fresh installs are unaffected. Examples: `2026_11_22_000003_actualizar_mensaje_final_del_ticket` and `2026_11_22_000006_agregar_jarras_y_cocteles`; the latter adds products by name only when missing, as `directo` with 60 units each, and attaches recipes with `RecetasSeeder` (limited through its `$solo` property) only so the menu can show "Qué trae"; `directo` products never discount insumos.
+
 ## Environment
 
 - The local `.env` uses MySQL (`bdcasa_blanca`), while `.env.example` defaults to SQLite.
