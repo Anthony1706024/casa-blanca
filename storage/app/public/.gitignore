@@ -1,2 +1,6 @@
-*
+/*
 !.gitignore
+# Fotos de productos y de la página web: van en el repositorio para que el
+# despliegue (Railway) las copie a su volumen con `php artisan imagenes:sembrar`
+!/productos/
+!/web/

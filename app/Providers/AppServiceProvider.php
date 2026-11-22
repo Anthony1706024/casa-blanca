@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // En Railway el arranque corre `php artisan optimize`: ahí se copian las fotos al volumen
+        $this->optimizes(optimize: 'imagenes:sembrar', key: 'imagenes');
     }
 }
