@@ -80,6 +80,14 @@ class Contenido extends Model
         'facebook' => ['Contacto y redes', 'Facebook (enlace)', 'url', null],
         'tiktok' => ['Contacto y redes', 'TikTok (enlace)', 'url', null],
         'youtube' => ['Contacto y redes', 'YouTube (enlace)', 'url', null],
+
+        // Datos que salen en el voucher de cobro (ticketera)
+        'ticket_nombre' => ['Ticket de cobro', 'Nombre del negocio', 'texto', 'CASA BLANCA'],
+        'ticket_subtitulo' => ['Ticket de cobro', 'Subtítulo', 'texto', 'RESTAURANTE CAMPESTRE'],
+        'ticket_lugar' => ['Ticket de cobro', 'Lugar', 'texto', 'Poroto – Trujillo – La Libertad'],
+        'ticket_ruc' => ['Ticket de cobro', 'RUC', 'texto', '10181327401'],
+        'ticket_mensaje' => ['Ticket de cobro', 'Mensaje final', 'texto', 'Esperamos volver a atenderlo pronto.'],
+        'ticket_ancho' => ['Ticket de cobro', 'Ancho del papel en mm (80 o 58)', 'texto', '80'],
     ];
 
     protected $fillable = ['clave', 'valor'];

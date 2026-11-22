@@ -1,0 +1,215 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Contenido;
+use App\Models\Recibo;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
+
+// Imprime el voucher de cobro directo en la ticketera (comandos ESC/POS), sin ventana del navegador.
+// La impresora se configura en .env (TICKETERA_IMPRESORA); si está vacía, no se imprime nada.
+class TicketeraService
+{
+    private const INICIAR = "\x1B\x40";
+
+    private const TABLA_850 = "\x1B\x74\x02";     // caracteres con tildes y ñ (página de códigos 850)
+
+    private const CENTRO = "\x1B\x61\x01";
+
+    private const IZQUIERDA = "\x1B\x61\x00";
+
+    private const NEGRITA = "\x1B\x45\x01";
+
+    private const SIN_NEGRITA = "\x1B\x45\x00";
+
+    private const GRANDE = "\x1D\x21\x11";        // doble alto y ancho
+
+    private const NORMAL = "\x1D\x21\x00";
+
+    private const CORTAR = "\x1D\x56\x42\x00";    // avanza y corta el papel
+
+    private int $columnas = 48;
+
+    private string $datos = '';
+
+    public function configurada(): bool
+    {
+        return filled(config('services.ticketera.impresora'));
+    }
+
+    // Devuelve true si el voucher llegó completo a la impresora
+    public function imprimirVoucher(Recibo $recibo): bool
+    {
+        if (! $this->configurada()) {
+            return false;
+        }
+
+        $archivo = tempnam(sys_get_temp_dir(), 'voucher');
+        file_put_contents($archivo, $this->voucher($recibo));
+
+        try {
+            // `php artisan serve` quita las variables de Windows y sin SystemRoot PowerShell no arranca (error 8009001d)
+            $windows = getenv('SystemRoot') ?: 'C:\\Windows';
+
+            $resultado = Process::timeout(30)->env([
+                'SystemRoot' => $windows,
+                'windir' => $windows,
+                'TEMP' => sys_get_temp_dir(),
+                'TMP' => sys_get_temp_dir(),
+            ])->run([
+                $windows.'\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                '-File', resource_path('ticketera/imprimir-raw.ps1'),
+                '-Impresora', config('services.ticketera.impresora'),
+                '-Archivo', $archivo,
+            ]);
+
+            if (! $resultado->successful()) {
+                Log::warning('No se pudo imprimir el voucher '.$recibo->numero, ['error' => $resultado->errorOutput()]);
+            }
+
+            return $resultado->successful();
+        } finally {
+            @unlink($archivo);
+        }
+    }
+
+    // Arma los bytes del voucher. Público para poder revisarlo en pruebas.
+    public function voucher(Recibo $recibo): string
+    {
+        $recibo->loadMissing(['pedido.items', 'pedido.mozo', 'pagos', 'cajero']);
+        $negocio = Contenido::valores();
+        $pedido = $recibo->pedido;
+        $fecha = $recibo->created_at;
+        $atendio = $pedido->mozo ?? $recibo->cajero;
+
+        $this->columnas = $negocio['ticket_ancho'] === '58' ? 32 : 48;
+        $this->datos = self::INICIAR.self::TABLA_850;
+
+        // Encabezado
+        $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
+        $this->linea($negocio['ticket_nombre']);
+        $this->comando(self::NORMAL);
+        if ($negocio['ticket_subtitulo']) {
+            $this->linea($negocio['ticket_subtitulo']);
+        }
+        $this->comando(self::SIN_NEGRITA);
+        if ($negocio['ticket_lugar']) {
+            $this->linea($negocio['ticket_lugar']);
+        }
+        if ($negocio['ticket_ruc']) {
+            $this->negrita('RUC: '.$negocio['ticket_ruc']);
+        }
+        $this->comando(self::IZQUIERDA);
+        $this->raya();
+
+        $this->comando(self::CENTRO);
+        $this->negrita('COMPROBANTE DE CONSUMO');
+        $this->linea('No válido como comprobante de pago');
+        $this->negrita('N.º '.str_pad($recibo->id, 7, '0', STR_PAD_LEFT));
+        $this->comando(self::IZQUIERDA);
+        $this->raya();
+
+        // Datos del pedido
+        $hora = $fecha->format('h:i').($fecha->format('A') === 'AM' ? ' a. m.' : ' p. m.');
+        $this->dosLados('Fecha: '.$fecha->format('d/m/Y'), 'Hora: '.$hora);
+        $this->dosLados('Recibo: '.$recibo->numero, 'Pedido: '.$pedido->numero);
+        if ($pedido->mesa) {
+            $this->linea('Mesa: '.str_pad($pedido->mesa, 2, '0', STR_PAD_LEFT));
+        }
+        if ($pedido->cliente_nombre) {
+            $this->linea('Cliente: '.$pedido->cliente_nombre);
+        }
+        $this->linea('DNI: '.$pedido->dni);
+        if ($atendio) {
+            $this->linea('Atendido por: '.Str::before($atendio->name.' ', ' '));
+        }
+        $this->raya();
+
+        // Productos
+        $this->comando(self::NEGRITA);
+        $this->dosLados('Cant. Descripción', 'Importe');
+        $this->comando(self::SIN_NEGRITA);
+        $this->raya();
+        foreach ($pedido->items as $item) {
+            $importe = number_format($item->subtotal, 2);
+            $texto = str_pad($item->cantidad, 2, '0', STR_PAD_LEFT).'    ';
+            // El nombre se corta en varias líneas si no cabe junto al importe
+            $espacio = $this->columnas - mb_strlen($texto) - mb_strlen($importe) - 1;
+            $partes = explode("\n", wordwrap($item->producto_nombre, $espacio, "\n", true));
+            $this->dosLados($texto.array_shift($partes), $importe);
+            foreach ($partes as $parte) {
+                $this->linea('      '.$parte);
+            }
+            if ($item->cantidad > 1) {
+                $this->linea('      S/ '.number_format($item->precio_unitario, 2).' c/u');
+            }
+        }
+        $this->raya('=');
+
+        // Total
+        $this->comando(self::CENTRO.self::NEGRITA);
+        $this->linea('TOTAL A PAGAR');
+        $this->comando(self::GRANDE);
+        $this->linea('S/ '.number_format($recibo->total, 2));
+        $this->comando(self::NORMAL.self::SIN_NEGRITA.self::IZQUIERDA);
+        $this->raya('=');
+
+        // Pagos
+        foreach ($recibo->pagos as $pago) {
+            $metodo = 'Método de pago: '.$pago->metodo_nombre;
+            $recibo->pagos->count() > 1
+                ? $this->dosLados($metodo, 'S/ '.number_format($pago->monto, 2))
+                : $this->linea($metodo);
+            if ($pago->numero_operacion) {
+                $this->linea('N.º de operación: '.$pago->numero_operacion);
+            }
+        }
+        $this->linea('Estado: PAGADO');
+        $this->raya();
+
+        // Despedida
+        $this->comando(self::CENTRO);
+        $this->negrita('¡GRACIAS POR SU VISITA!');
+        if ($negocio['ticket_mensaje']) {
+            $this->linea($negocio['ticket_mensaje']);
+        }
+        $this->linea('');
+        $this->linea('Restaurante Campestre '.Str::title(mb_strtolower($negocio['ticket_nombre'])));
+        $this->linea("\n\n\n");
+        $this->comando(self::CORTAR);
+
+        return $this->datos;
+    }
+
+    private function comando(string $bytes): void
+    {
+        $this->datos .= $bytes;
+    }
+
+    private function linea(string $texto): void
+    {
+        // Rayas largas (–) no existen en la tabla 850
+        $texto = str_replace(['–', '—'], '-', $texto);
+        $this->datos .= mb_convert_encoding($texto, 'CP850', 'UTF-8')."\n";
+    }
+
+    private function negrita(string $texto): void
+    {
+        $this->comando(self::NEGRITA);
+        $this->linea($texto);
+        $this->comando(self::SIN_NEGRITA);
+    }
+
+    private function raya(string $caracter = '-'): void
+    {
+        $this->linea(str_repeat($caracter, $this->columnas));
+    }
+
+    private function dosLados(string $izquierda, string $derecha): void
+    {
+        $espacios = max(1, $this->columnas - mb_strlen($izquierda) - mb_strlen($derecha));
+        $this->linea($izquierda.str_repeat(' ', $espacios).$derecha);
+    }
+}

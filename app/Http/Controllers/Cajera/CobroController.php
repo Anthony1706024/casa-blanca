@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\Recibo;
+use App\Services\TicketeraService;
 use App\Services\VentaService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -44,7 +45,7 @@ class CobroController extends Controller
         return view('cajera.pedidos.show', compact('pedido', 'metodos'));
     }
 
-    public function cobrar(Request $request, $id, VentaService $ventas)
+    public function cobrar(Request $request, $id, VentaService $ventas, TicketeraService $ticketera)
     {
         // El número de operación es obligatorio salvo en efectivo.
         $datos = $request->validate([
@@ -63,8 +64,17 @@ class CobroController extends Controller
 
         $recibo = $ventas->cobrar((int) $id, $datos['pagos'], $request->user());
 
-        return redirect()->route('recibos.show', $recibo->id)
+        // Si falla la ticketera, el cobro ya quedó registrado: solo se avisa
+        $redireccion = redirect()->route('recibos.show', $recibo->id)
             ->with('success', 'Cobro registrado correctamente');
+
+        if ($ticketera->configurada()) {
+            return $ticketera->imprimirVoucher($recibo)
+                ? $redireccion->with('impreso', 'Voucher impreso en la ticketera.')
+                : $redireccion->with('error', 'El cobro se registró, pero no se pudo imprimir el voucher. Revisa que la ticketera esté prendida y vuelve a imprimir.');
+        }
+
+        return $redireccion;
     }
 
     public function anular($id, VentaService $ventas)

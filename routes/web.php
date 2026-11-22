@@ -1,23 +1,22 @@
 <?php
 
-use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
-use App\Http\Controllers\Mozo\DashboardController as MozoDashboard;
-use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
-use App\Http\Controllers\ProfileController;
-use App\Models\SitioItem;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\UsuarioController; // 👈 AGREGAR ESTA LÍNEA
 use App\Http\Controllers\Admin\AlmacenController;
-use App\Http\Controllers\Admin\SubcategoriaController;
-use App\Http\Controllers\Admin\InsumoController;
-use App\Http\Controllers\Admin\VentaController;
-use App\Http\Controllers\Mozo\PedidoController as MozoPedido;
-use App\Http\Controllers\Cajera\CobroController;
-use App\Http\Controllers\Admin\PrecioController;
 use App\Http\Controllers\Admin\ContenidoController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Admin\InsumoController;
+use App\Http\Controllers\Admin\PrecioController;
+use App\Http\Controllers\Admin\UsuarioController;
+use App\Http\Controllers\Admin\VentaController;
+use App\Http\Controllers\Cajera\CobroController;
+use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
 use App\Http\Controllers\CartaController;
 use App\Http\Controllers\InicioController;
+use App\Http\Controllers\Mozo\DashboardController as MozoDashboard;
+use App\Http\Controllers\Mozo\PedidoController as MozoPedido;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReciboController;
+use App\Models\SitioItem;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [InicioController::class, 'index']);
 
@@ -32,8 +31,8 @@ Route::post('/carta/pedido', [CartaController::class, 'store'])->middleware('thr
 // ============================================
 Route::get('/dashboard', function () {
     $user = auth()->user();
-    
-    if (!$user) {
+
+    if (! $user) {
         return redirect()->route('login');
     }
 
@@ -53,7 +52,7 @@ Route::get('/dashboard', function () {
 // ============================================
 
 Route::middleware(['auth', 'checkrole:admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     // Dashboard
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
 
@@ -142,6 +141,7 @@ Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.
 // Recibo imprimible: lo emite caja y lo consulta el administrador
 Route::middleware(['auth', 'checkrole:admin,cajera'])->group(function () {
     Route::get('/recibos/{id}', [ReciboController::class, 'show'])->name('recibos.show');
+    Route::post('/recibos/{id}/imprimir', [ReciboController::class, 'imprimir'])->name('recibos.imprimir');
 });
 
 // ============================================

@@ -3,100 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo {{ $recibo->numero }} | Casa Blanca</title>
+    <title>Voucher {{ str_pad($recibo->id, 7, '0', STR_PAD_LEFT) }} | Casa Blanca</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+    {{-- Sin estilos externos: el voucher debe imprimirse igual sin internet --}}
     <style>
-        body { background: #f3f4f6; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; }
+        @page { size: {{ $ancho }}mm auto; margin: 0; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #e5e7eb; font-family: Arial, Helvetica, sans-serif; color: #000; }
+
+        /* Barra de acciones, solo en pantalla */
+        .acciones { max-width: 420px; margin: 16px auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 14px; }
+        .acciones a, .acciones button { font: inherit; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; text-decoration: none; }
+        .volver { color: #374151; background: transparent; }
+        .imprimir { background: #f97316; color: #fff; font-weight: 600; }
+        .imprimir:hover { background: #ea580c; }
+        .papel { color: #374151; background: #fff; }
+        .papel.activo { background: #1f2937; color: #fff; }
+        .aviso { max-width: 420px; margin: 0 auto 12px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+
+        /* El ticket: 80 mm de papel imprimen ~72 mm; 58 mm imprimen ~48 mm */
+        .ticket { width: {{ $ancho === '58' ? '48mm' : '72mm' }}; margin: 0 auto 24px; background: #fff; padding: 5mm {{ $ancho === '58' ? '2mm' : '3mm' }}; font-size: {{ $ancho === '58' ? '11px' : '12.5px' }}; line-height: 1.35; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); }
+        .centro { text-align: center; }
+        .nombre { font-size: 1.6em; font-weight: 800; letter-spacing: .08em; }
+        .subtitulo { font-weight: 700; letter-spacing: .05em; }
+        .negrita { font-weight: 700; }
+        .titulo { font-size: 1.1em; font-weight: 800; margin-top: 2px; }
+        .nota { font-size: .85em; }
+        .linea { border-top: 1px dashed #000; margin: 7px 0; }
+        .doble { border-top: 2px solid #000; margin: 7px 0; }
+        .fila { display: flex; justify-content: space-between; gap: 8px; }
+        @if($ancho === '58')
+            /* En 58 mm no caben dos datos por fila */
+            .fila { display: block; }
+            .fila > span { display: block; }
+        @endif
+
+        table { width: 100%; border-collapse: collapse; }
+        th { font-weight: 700; text-align: left; padding-bottom: 3px; border-bottom: 1px dashed #000; }
+        td { padding: 3px 0 0; vertical-align: top; }
+        .cant { width: 2.6em; }
+        .importe { text-align: right; white-space: nowrap; padding-left: 6px; }
+
+        .total { font-size: 1.15em; font-weight: 800; text-align: center; }
+        .total strong { display: block; font-size: 1.6em; }
+        .gracias { font-weight: 800; font-size: 1.05em; }
+
         @media print {
             body { background: #fff; }
-            .no-imprimir { display: none !important; }
-            .ticket { box-shadow: none !important; border: 0 !important; margin: 0 !important; max-width: 100% !important; }
+            .acciones, .aviso { display: none !important; }
+            .ticket { margin: 0; box-shadow: none; }
         }
     </style>
 </head>
-<body class="p-4">
-    @php($volver = auth()->user()->isAdmin() ? route('admin.ventas.index') : route('cajera.pedidos.index'))
+<body>
+    @php
+        $volver = auth()->user()->isAdmin() ? route('admin.ventas.index') : route('cajera.pedidos.index');
+        $pedido = $recibo->pedido;
+        $fecha = $recibo->created_at;
+        $hora = $fecha->format('h:i').' '.($fecha->format('A') === 'AM' ? 'a. m.' : 'p. m.');
+        $atendio = $pedido->mozo ?? $recibo->cajero;
+        $acabaDeCobrar = session()->has('success');
+    @endphp
 
-    <div class="no-imprimir max-w-md mx-auto flex justify-between items-center mb-4">
-        <a href="{{ $volver }}" class="text-gray-600 hover:text-black text-sm"><i class="fas fa-arrow-left mr-1"></i> Volver</a>
-        <button onclick="window.print()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">
-            <i class="fas fa-print mr-1"></i> Imprimir
-        </button>
+    <div class="acciones">
+        <a href="{{ $volver }}" class="volver">← Volver</a>
+        <span>
+            <a href="?ancho=80" class="papel {{ $ancho === '80' ? 'activo' : '' }}">80 mm</a>
+            <a href="?ancho=58" class="papel {{ $ancho === '58' ? 'activo' : '' }}">58 mm</a>
+        </span>
+        @if($ticketera)
+            <form method="POST" action="{{ route('recibos.imprimir', $recibo->id) }}">
+                @csrf
+                <button type="submit" class="imprimir">Imprimir en ticketera</button>
+            </form>
+        @else
+            <button type="button" class="imprimir" onclick="window.print()">Imprimir voucher</button>
+        @endif
     </div>
 
-    @if(session('success'))
-        <div class="no-imprimir max-w-md mx-auto bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
-            <i class="fas fa-check-circle text-green-500 mr-2"></i>{{ session('success') }}
-        </div>
+    @if($acabaDeCobrar)
+        <div class="aviso">{{ session('success') }}</div>
+    @endif
+    @if(session('impreso'))
+        <div class="aviso">{{ session('impreso') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="aviso" style="background: #fef2f2; border-color: #fecaca; color: #991b1b;">{{ session('error') }}</div>
     @endif
 
-    <div class="ticket max-w-md mx-auto bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-sm">
-        <div class="text-center border-b border-dashed border-gray-300 pb-4 mb-4">
-            <h1 class="text-xl font-bold">CASA BLANCA</h1>
-            <p class="text-gray-500">Recibo de pago</p>
-            <p class="font-mono font-semibold text-orange-600 mt-1">{{ $recibo->numero }}</p>
+    <div class="ticket">
+        <div class="centro">
+            <div class="nombre">{{ $negocio['ticket_nombre'] }}</div>
+            @if($negocio['ticket_subtitulo'])<div class="subtitulo">{{ $negocio['ticket_subtitulo'] }}</div>@endif
+            @if($negocio['ticket_lugar'])<div>{{ $negocio['ticket_lugar'] }}</div>@endif
+            @if($negocio['ticket_ruc'])<div class="negrita">RUC: {{ $negocio['ticket_ruc'] }}</div>@endif
         </div>
 
-        <dl class="grid grid-cols-2 gap-y-1 border-b border-dashed border-gray-300 pb-4 mb-4">
-            <dt class="text-gray-500">Fecha</dt>
-            <dd class="text-right">{{ $recibo->created_at->format('d/m/Y H:i') }}</dd>
-            <dt class="text-gray-500">Pedido</dt>
-            <dd class="text-right font-mono">{{ $recibo->pedido->numero }}</dd>
-            <dt class="text-gray-500">DNI</dt>
-            <dd class="text-right font-semibold">{{ $recibo->pedido->dni }}</dd>
-            @if($recibo->pedido->cliente_nombre)
-                <dt class="text-gray-500">Cliente</dt>
-                <dd class="text-right">{{ $recibo->pedido->cliente_nombre }}</dd>
-            @endif
-            @if($recibo->pedido->mesa)
-                <dt class="text-gray-500">Mesa</dt>
-                <dd class="text-right">{{ $recibo->pedido->mesa }}</dd>
-            @endif
-            @if($recibo->cajero)
-                <dt class="text-gray-500">Atendió</dt>
-                <dd class="text-right">{{ $recibo->cajero->name }}</dd>
-            @endif
-        </dl>
+        <div class="linea"></div>
+        <div class="centro">
+            <div class="titulo">COMPROBANTE DE CONSUMO</div>
+            <div class="nota">No válido como comprobante de pago</div>
+            <div class="negrita" style="margin-top: 4px;">N.º {{ str_pad($recibo->id, 7, '0', STR_PAD_LEFT) }}</div>
+        </div>
+        <div class="linea"></div>
 
-        <table class="w-full mb-4">
+        <div class="fila"><span>Fecha: {{ $fecha->format('d/m/Y') }}</span><span>Hora: {{ $hora }}</span></div>
+        <div class="fila"><span>Recibo: {{ $recibo->numero }}</span><span>Pedido: {{ $pedido->numero }}</span></div>
+        @if($pedido->mesa)<div>Mesa: {{ str_pad($pedido->mesa, 2, '0', STR_PAD_LEFT) }}</div>@endif
+        @if($pedido->cliente_nombre)<div>Cliente: {{ $pedido->cliente_nombre }}</div>@endif
+        <div>DNI: {{ $pedido->dni }}</div>
+        @if($atendio)<div>Atendido por: {{ \Illuminate\Support\Str::before($atendio->name.' ', ' ') }}</div>@endif
+
+        <div class="linea"></div>
+        <table>
             <thead>
-                <tr class="text-gray-500 text-left">
-                    <th class="font-medium pb-1">Cant.</th>
-                    <th class="font-medium pb-1">Producto</th>
-                    <th class="font-medium pb-1 text-right">Importe</th>
-                </tr>
+                <tr><th class="cant">Cant.</th><th>Descripción</th><th class="importe">Importe</th></tr>
             </thead>
             <tbody>
-                @foreach($recibo->pedido->items as $item)
+                @foreach($pedido->items as $item)
                     <tr>
-                        <td class="py-0.5 align-top">{{ $item->cantidad }}</td>
-                        <td class="py-0.5">{{ $item->producto_nombre }}<br><span class="text-gray-400 text-xs">S/ {{ number_format($item->precio_unitario, 2) }} c/u</span></td>
-                        <td class="py-0.5 align-top text-right">S/ {{ number_format($item->subtotal, 2) }}</td>
+                        <td class="cant">{{ str_pad($item->cantidad, 2, '0', STR_PAD_LEFT) }}</td>
+                        <td>
+                            {{ $item->producto_nombre }}
+                            @if($item->cantidad > 1)<div class="nota">S/ {{ number_format($item->precio_unitario, 2) }} c/u</div>@endif
+                        </td>
+                        <td class="importe">{{ number_format($item->subtotal, 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
 
-        <div class="flex justify-between text-lg font-bold border-t border-dashed border-gray-300 pt-3 mb-4">
-            <span>TOTAL</span>
-            <span>S/ {{ number_format($recibo->total, 2) }}</span>
-        </div>
+        <div class="doble"></div>
+        <div class="total">TOTAL A PAGAR<strong>S/ {{ number_format($recibo->total, 2) }}</strong></div>
+        <div class="doble"></div>
 
-        <h2 class="font-semibold mb-2">Forma de pago</h2>
         @foreach($recibo->pagos as $pago)
-            <div class="flex justify-between gap-4 py-1">
-                <div>
-                    <div>{{ $pago->metodo_nombre }}</div>
-                    <div class="text-gray-500 text-xs">N.° de operación: {{ $pago->numero_operacion ?: '—' }}</div>
-                </div>
-                <div class="font-semibold">S/ {{ number_format($pago->monto, 2) }}</div>
+            <div class="fila">
+                <span>Método de pago: <span class="negrita">{{ $pago->metodo_nombre }}</span></span>
+                @if($recibo->pagos->count() > 1)<span>S/ {{ number_format($pago->monto, 2) }}</span>@endif
             </div>
+            @if($pago->numero_operacion)<div class="nota">N.º de operación: {{ $pago->numero_operacion }}</div>@endif
         @endforeach
+        <div>Estado: <span class="negrita">PAGADO</span></div>
 
-        <p class="text-center text-gray-400 text-xs mt-6">¡Gracias por su visita!</p>
+        <div class="linea"></div>
+        <div class="centro">
+            <div class="gracias">¡GRACIAS POR SU VISITA!</div>
+            @if($negocio['ticket_mensaje'])<div>{{ $negocio['ticket_mensaje'] }}</div>@endif
+            <div style="margin-top: 6px;">Restaurante Campestre {{ \Illuminate\Support\Str::title(strtolower($negocio['ticket_nombre'])) }}</div>
+        </div>
     </div>
+
+    @if(! $ticketera && ($acabaDeCobrar || request('imprimir')))
+        {{-- Recién cobrado: se abre la impresión sola --}}
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>
+    @endif
 </body>
 </html>

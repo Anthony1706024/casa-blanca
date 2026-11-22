@@ -56,6 +56,13 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 - A charge takes 1 or 2 payments (`pagos`) that must add up to the order total. `numero_operacion` is required except for `efectivo`.
 - `PD-` and `RC-` numbers are accessors built from the id, not columns.
 
+### Receipt printer (ticketera)
+
+- After a charge, `CobroController::cobrar` sends the voucher straight to the thermal printer through `App\Services\TicketeraService`, which builds ESC/POS bytes (code page 850, 48 columns for 80 mm or 32 for 58 mm) and runs `resources/ticketera/imprimir-raw.ps1` to write them RAW to the Windows printer. A failed print never undoes the charge; it only flashes an `error` with a reprint button (`recibos.imprimir`).
+- The printer name comes from `TICKETERA_IMPRESORA` in `.env` (`config('services.ticketera.impresora')`). Empty means no direct printing, and `recibos/show` falls back to the browser's print dialog. `phpunit.xml` forces it empty so tests never print; use `Process::fake()` to test it.
+- `php artisan serve` strips Windows environment variables, so the service passes `SystemRoot` to PowerShell explicitly (without it PowerShell fails with error 8009001d).
+- The business data on the voucher (name, RUC, place, message, paper width) are `ticket_*` fields in `Contenido::CAMPOS`, edited from the admin content screen.
+
 ### Prices
 
 - Sales never read the current price: `pedido_items` stores `precio_unitario` and `subtotal` when the order is created, and `recibos.total` when it is charged. Reports must use those columns, never `productos.precio_venta`.
