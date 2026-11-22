@@ -29,7 +29,10 @@ return [
     ],
 
     // Ticketera del voucher de cobro: nombre de la impresora en Windows. Vacío = no imprime.
+    // Ver App\Services\TicketeraService. modo: cola (agente en la PC de caja) o directo (esta misma PC)
     'ticketera' => [
+        'modo' => env('TICKETERA_MODO', 'cola'),
+        'clave' => env('TICKETERA_CLAVE'),
         'impresora' => env('TICKETERA_IMPRESORA'),
     ],
 

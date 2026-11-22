@@ -105,6 +105,12 @@
             <span class="text-sm font-medium">Ver Ventas</span>
         </a>
 
+        <!-- Cola de impresión -->
+        <a href="{{ route('impresiones.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('impresiones.*') ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-orange-500/10 hover:text-white' }} transition mb-1">
+            <i class="fas fa-print w-5 text-center"></i>
+            <span class="text-sm font-medium">Impresiones</span>
+        </a>
+
         <p class="text-gray-600 text-xs uppercase tracking-wider font-semibold mt-6 mb-4">Precios</p>
 
         <a href="{{ route('admin.precios.index') }}" 

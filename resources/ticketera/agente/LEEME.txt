@@ -1,0 +1,69 @@
+﻿AGENTE DE LA TICKETERA - CASA BLANCA
+====================================
+
+QUÉ ES
+------
+Un programa pequeño que corre en la PC donde está conectada la ticketera (Innova POS INP-830).
+El sistema Casa Blanca, en esta PC o en Railway, no imprime directo: deja cada voucher de cobro
+y cada ticket de cocina en una cola. Este agente pregunta cada 3 segundos si hay algo pendiente,
+lo imprime en orden y le avisa al sistema si salió bien o si hubo un error.
+Si se corta internet o el sistema no responde, el agente espera y sigue solo. No se cierra.
+Lo que se haya pedido mientras tanto sale cuando vuelve la conexión.
+
+ARCHIVOS
+--------
+agente-ticketera.ps1   El agente.
+imprimir-raw.ps1       Manda los bytes a la impresora de Windows.
+config.json            Tu configuración (NO se comparte: tiene la clave).
+config.ejemplo.json    Modelo para crear config.json.
+iniciar.bat            Abre el agente en una ventana visible, para probar.
+instalar-tarea.ps1     Hace que el agente arranque solo y oculto al iniciar sesión en Windows.
+desinstalar-tarea.ps1  Quita eso y cierra el agente.
+logs\                  Registro diario (agente-AAAA-MM-DD.log). Los de más de 15 días se borran solos.
+
+CÓMO CONFIGURARLO
+-----------------
+1. En el sistema (.env en local, o variables en Railway) deben estar:
+     TICKETERA_MODO=cola
+     TICKETERA_CLAVE=<una clave larga>
+   La clave se genera con:  php -r "echo bin2hex(random_bytes(32));"
+2. Copia config.ejemplo.json como config.json y completa:
+     url        Dirección del sistema, sin barra al final.
+                En esta PC:  http://127.0.0.1:8000
+                En Railway:  https://casa-blanca-production-67f171f3.up.railway.app
+     clave      La misma TICKETERA_CLAVE del sistema.
+     impresora  Nombre exacto de la impresora en Windows
+                (Configuración > Bluetooth y dispositivos > Impresoras). Hoy: Ticketera Casa Blanca
+     intervalo  Cada cuántos segundos pregunta (3 está bien).
+   No hace falta reiniciar el agente: lee config.json en cada vuelta.
+
+CÓMO PROBARLO
+-------------
+1. Doble clic en iniciar.bat. Se abre una ventana negra que dice "Agente iniciado".
+2. En el sistema, cobra un pedido o pide un ticket de cocina.
+3. En unos segundos sale en la ticketera y la ventana muestra "Impreso #...".
+4. En el sistema, menú "Impresiones": se ve cada trabajo con su estado.
+Para cerrarlo, cierra la ventana.
+
+QUE ARRANQUE SOLO CON WINDOWS
+-----------------------------
+Abre PowerShell en esta carpeta (Shift + clic derecho en la carpeta > "Abrir en Terminal") y ejecuta:
+    powershell -ExecutionPolicy Bypass -File .\instalar-tarea.ps1
+Crea la tarea "Casa Blanca - Ticketera" (la ves en el Programador de tareas). Arranca oculta cada vez
+que este usuario inicia sesión y se reinicia sola si falla. Si usas la tarea, no abras también iniciar.bat:
+el agente no deja correr dos a la vez.
+Para quitarla:
+    powershell -ExecutionPolicy Bypass -File .\desinstalar-tarea.ps1
+
+SI NO IMPRIME
+-------------
+- Mira el último archivo de logs\. Dice qué pasa con palabras:
+  * "CLAVE INCORRECTA": la clave de config.json no es igual a TICKETERA_CLAVE del sistema.
+  * "Sin conexión con la app": no hay internet, la url está mal o el sistema está apagado.
+  * "La app no tiene la cola de impresión activada": falta TICKETERA_CLAVE en el sistema.
+  * "No se pudo imprimir en ...": la impresora no existe con ese nombre o está desconectada.
+- En el sistema, menú "Impresiones":
+  * "La ticketera no está recibiendo": el agente no está corriendo o no puede conectarse.
+  * Estado "Error": falló 3 veces. Arregla la impresora y pulsa "Reintentar".
+- Revisa que la ticketera esté prendida, con papel y con el lado térmico hacia el cabezal.
+- Prueba la impresora sola: en Windows, propiedades de la impresora > "Imprimir página de prueba".

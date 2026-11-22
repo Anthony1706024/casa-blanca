@@ -32,7 +32,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <!-- Las pruebas nunca imprimen en la ticketera real -->
+        <!-- Las pruebas nunca imprimen ni encolan por accidente: cada prueba configura el modo que necesita -->
+        <env name="TICKETERA_MODO" value="directo" force="true"/>
+        <env name="TICKETERA_CLAVE" value="" force="true"/>
         <env name="TICKETERA_IMPRESORA" value="" force="true"/>
     </php>
 </phpunit>

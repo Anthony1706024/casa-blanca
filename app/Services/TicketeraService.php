@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contenido;
+use App\Models\Impresion;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Recibo;
@@ -10,10 +11,17 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
-// Imprime el voucher de cobro directo en la ticketera (comandos ESC/POS), sin ventana del navegador.
-// La impresora se configura en .env (TICKETERA_IMPRESORA); si está vacía, no se imprime nada.
+// Arma el voucher de cobro y los tickets de cocina en comandos ESC/POS y los manda a la ticketera.
+// TICKETERA_MODO=cola (por defecto): se dejan en la cola `impresiones` y el agente de la PC de caja los imprime;
+//   funciona igual en local y en Railway. Requiere TICKETERA_CLAVE.
+// TICKETERA_MODO=directo: se imprimen en esta misma PC con imprimir-raw.ps1. Requiere TICKETERA_IMPRESORA.
+// Sin configurar, no se imprime nada aquí y las vistas usan el diálogo de impresión del navegador.
 class TicketeraService
 {
+    public const COLA = 'cola';
+
+    public const DIRECTO = 'directo';
+
     private const INICIAR = "\x1B\x40";
 
     private const TABLA_850 = "\x1B\x74\x02";     // caracteres con tildes y ñ (página de códigos 850)
@@ -38,21 +46,44 @@ class TicketeraService
 
     private string $datos = '';
 
+    public function modo(): string
+    {
+        return config('services.ticketera.modo') === self::DIRECTO ? self::DIRECTO : self::COLA;
+    }
+
+    public function enCola(): bool
+    {
+        return $this->modo() === self::COLA;
+    }
+
     public function configurada(): bool
     {
-        return filled(config('services.ticketera.impresora'));
+        return $this->enCola()
+            ? filled(config('services.ticketera.clave'))
+            : filled(config('services.ticketera.impresora'));
     }
 
-    // Devuelve true si el voucher llegó completo a la impresora
+    // Devuelve true si el voucher quedó en la cola (modo cola) o llegó completo a la impresora (modo directo)
     public function imprimirVoucher(Recibo $recibo): bool
     {
-        return $this->configurada() && $this->enviar($this->voucher($recibo), 'el voucher '.$recibo->numero);
+        $recibo->loadMissing('pedido');
+
+        return $this->configurada() && $this->enviar(
+            $this->voucher($recibo),
+            Impresion::VOUCHER,
+            "Voucher {$recibo->numero} – {$recibo->pedido->numero}",
+            $recibo->id,
+            $recibo->pedido_id,
+        );
     }
 
-    // Tickets de cocina: uno por cocina, cada uno con su corte de papel. $lote viene de ComandaService::lote
+    // Tickets de cocina: uno por cocina, cada uno con su corte de papel, todos en un solo trabajo. $lote viene de ComandaService::lote
     public function imprimirComanda(Pedido $pedido, array $lote): bool
     {
-        return $this->configurada() && $this->enviar($this->comanda($pedido, $lote), 'la comanda del pedido '.$pedido->numero);
+        $cocinas = collect(array_keys($lote['tickets']))->map(fn ($cocina) => Producto::COCINAS[$cocina] ?? $cocina)->implode(', ');
+        $descripcion = "Comanda {$pedido->numero} – {$cocinas}".($lote['reimpresion'] ? ' (reimpresión)' : '');
+
+        return $this->configurada() && $this->enviar($this->comanda($pedido, $lote), Impresion::COMANDA, $descripcion, null, $pedido->id);
     }
 
     // Arma los bytes de los tickets de cocina. Público para poder revisarlo en pruebas.
@@ -123,9 +154,15 @@ class TicketeraService
         return $this->datos;
     }
 
-    // Manda los bytes a la ticketera en modo RAW. Devuelve true si llegaron completos.
-    private function enviar(string $bytes, string $que): bool
+    // Modo cola: deja el trabajo para el agente. Modo directo: lo manda en RAW y devuelve true si llegó completo.
+    private function enviar(string $bytes, string $tipo, string $descripcion, ?int $reciboId, ?int $pedidoId): bool
     {
+        if ($this->enCola()) {
+            app(ColaImpresionService::class)->encolar($bytes, $tipo, $descripcion, $reciboId, $pedidoId);
+
+            return true;
+        }
+
         $archivo = tempnam(sys_get_temp_dir(), 'ticket');
         file_put_contents($archivo, $bytes);
 
@@ -146,7 +183,7 @@ class TicketeraService
             ]);
 
             if (! $resultado->successful()) {
-                Log::warning('No se pudo imprimir '.$que, ['error' => $resultado->errorOutput()]);
+                Log::warning('No se pudo imprimir: '.$descripcion, ['error' => $resultado->errorOutput()]);
             }
 
             return $resultado->successful();

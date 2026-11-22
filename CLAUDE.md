@@ -54,7 +54,7 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 - An order (`pedidos`) starts as `pendiente` and comes from the mozo, from caja (`origen` `caja`, then it redirects straight to the charge screen) or from the public, unauthenticated `/carta` page (throttled). `mozo_id` holds whichever staff user registered it. `pedido_items` copies the product name and price, so receipts stay stable.
 - `/carta` is the customer menu, laid out like the printed PDF menu: `App\Services\CartaService::SECCIONES` maps PDF sections (titles, order) to category/subcategory names, pairs "Fuente de X" with "X" in one Personal/Fuente row, and appends anything unmatched by category so new products still show. It keeps a cart in `localStorage` (`casablanca.carrito`) and a cart modal where the customer enters DNI and table. `mesa` is required there but optional for staff, whose rules live in `PedidoPersonalRequest`. Staff screens use the `pedidos._selector` quantity grid instead.
 - Creating an order only checks availability. **Stock is discounted when the order is charged**, in `App\Services\VentaService::cobrar`, inside a transaction with row locks. All order, charge and cancel logic belongs in that service.
-- A charge takes 1 or 2 payments (`pagos`) that must add up to the order total. `numero_operacion` is required except for `efectivo`.
+- A charge takes 1 or 2 payments (`pagos`) that must add up to the order total. `numero_operacion` is optional for every method; the voucher prints it only when present.
 - `PD-` and `RC-` numbers are accessors built from the id, not columns.
 
 ### Kitchen tickets (comandas) and add-ons
@@ -67,9 +67,15 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 
 ### Receipt printer (ticketera)
 
-- After a charge, `CobroController::cobrar` sends the voucher straight to the thermal printer through `App\Services\TicketeraService`, which builds ESC/POS bytes (code page 850, 48 columns for 80 mm or 32 for 58 mm) and runs `resources/ticketera/imprimir-raw.ps1` to write them RAW to the Windows printer. A failed print never undoes the charge; it only flashes an `error` with a reprint button (`recibos.imprimir`).
-- The printer name comes from `TICKETERA_IMPRESORA` in `.env` (`config('services.ticketera.impresora')`). Empty means no direct printing, and `recibos/show` falls back to the browser's print dialog. `phpunit.xml` forces it empty so tests never print; use `Process::fake()` to test it.
-- `php artisan serve` strips Windows environment variables, so the service passes `SystemRoot` to PowerShell explicitly (without it PowerShell fails with error 8009001d).
+- `App\Services\TicketeraService` builds the ESC/POS bytes (code page 850, 48 columns for 80 mm or 32 for 58 mm): `voucher()` after a charge (`CobroController::cobrar`, reprint `recibos.imprimir`) and `comanda()` for kitchen tickets. A failed print never undoes the charge; it only flashes an `error`.
+- `TICKETERA_MODO` (`config('services.ticketera.modo')`) picks how they reach the printer:
+  - `cola` (default, used locally and on Railway): `ColaImpresionService::encolar` stores the bytes base64 in the `impresiones` table (`Impresion`: `pendiente` → `enviando` → `impresa`, or `error` after 3 failures). Needs `TICKETERA_CLAVE`; without it the queue counts as not configured.
+  - `directo`: runs `resources/ticketera/imprimir-raw.ps1` on this same Windows PC with the printer named in `TICKETERA_IMPRESORA`. `php artisan serve` strips Windows environment variables, so the service passes `SystemRoot` to PowerShell explicitly (without it PowerShell fails with error 8009001d).
+- `TicketeraService::configurada()` is false when the active mode lacks its key or printer name; then `recibos/show` and `cajera/pedidos/comanda` fall back to the browser's print dialog. When it is true, they never open that dialog.
+- The agent (`resources/ticketera/agente/`, PowerShell) runs on the PC with the printer: it polls `GET /ticketera/pendientes`, prints each job in order with `imprimir-raw.ps1` (copied next to it) and reports `POST /ticketera/{id}/impresa` or `/error`. Its `config.json` holds the url, key and printer name and is gitignored. `LEEME.txt` explains setup; `instalar-tarea.ps1` registers the scheduled task "Casa Blanca - Ticketera" (at logon, hidden, restarts on failure).
+- The `/ticketera/*` routes authenticate with `Authorization: Bearer <TICKETERA_CLAVE>` (`ClaveTicketera` middleware, `hash_equals`; 403 when no key is set, 401 when it is wrong). They skip sessions and CSRF (`withoutMiddleware` in `routes/web.php`, plus the CSRF exception in `bootstrap/app.php`), because the agent polls every few seconds and `SESSION_DRIVER=database` would otherwise create a row per poll. Jobs left in `enviando` for 2 minutes are offered again; the agent remembers the ids it already printed so a lost acknowledgement does not print twice.
+- `impresiones.index` (cajera and admin) lists the last 50 jobs with a "Reintentar" button for `error` and warns when jobs have been waiting more than a minute.
+- `phpunit.xml` forces `TICKETERA_MODO=directo` with an empty key and printer, so tests neither print nor queue unless they set the config themselves; use `Process::fake()` as `ColaImpresionTest`, `TicketeraTest` and `ComandaTest` do.
 - The business data on the voucher (name, RUC, place, message, paper width) are `ticket_*` fields in `Contenido::CAMPOS`, edited from the admin content screen.
 
 ### Prices

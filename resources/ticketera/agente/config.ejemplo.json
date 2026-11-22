@@ -1,0 +1,6 @@
+{
+    "url": "http://127.0.0.1:8000",
+    "clave": "PEGA_AQUI_LA_TICKETERA_CLAVE",
+    "impresora": "Ticketera Casa Blanca",
+    "intervalo": 3
+}

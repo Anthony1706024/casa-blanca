@@ -45,7 +45,9 @@ class ComandaController extends Controller
 
         $comandas->marcarEnviado($lote);
 
-        return $vista->with('comanda', $lote)->with('success', "Tickets enviados a cocina: {$cocinas}.");
+        $mensaje = $ticketera->enCola() ? "Ticket enviado a la ticketera: {$cocinas}." : "Tickets enviados a cocina: {$cocinas}.";
+
+        return $vista->with('comanda', $lote)->with('success', $mensaje);
     }
 
     // Vista del ticket: muestra lo último que se envió, o lo pendiente si falta enviar algo

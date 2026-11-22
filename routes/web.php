@@ -11,13 +11,18 @@ use App\Http\Controllers\Cajera\CobroController;
 use App\Http\Controllers\Cajera\ComandaController;
 use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
 use App\Http\Controllers\CartaController;
+use App\Http\Controllers\ImpresionController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\Mozo\DashboardController as MozoDashboard;
 use App\Http\Controllers\Mozo\PedidoController as MozoPedido;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReciboController;
+use App\Http\Controllers\TicketeraAgenteController;
 use App\Models\SitioItem;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 Route::get('/', [InicioController::class, 'index']);
 
@@ -152,7 +157,23 @@ Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.
 Route::middleware(['auth', 'checkrole:admin,cajera'])->group(function () {
     Route::get('/recibos/{id}', [ReciboController::class, 'show'])->name('recibos.show');
     Route::post('/recibos/{id}/imprimir', [ReciboController::class, 'imprimir'])->name('recibos.imprimir');
+
+    // Seguimiento de la cola de impresión
+    Route::get('/impresiones', [ImpresionController::class, 'index'])->name('impresiones.index');
+    Route::post('/impresiones/{id}/reintentar', [ImpresionController::class, 'reintentar'])->name('impresiones.reintentar');
 });
+
+// ============================================
+// AGENTE DE LA TICKETERA (PC de caja): sin sesión ni CSRF, con clave Bearer
+// ============================================
+Route::prefix('ticketera')->name('ticketera.')
+    ->middleware(['ticketera.clave', 'throttle:120,1'])
+    ->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, ValidateCsrfToken::class])
+    ->group(function () {
+        Route::get('/pendientes', [TicketeraAgenteController::class, 'pendientes'])->name('pendientes');
+        Route::post('/{id}/impresa', [TicketeraAgenteController::class, 'impresa'])->whereNumber('id')->name('impresa');
+        Route::post('/{id}/error', [TicketeraAgenteController::class, 'error'])->whereNumber('id')->name('error');
+    });
 
 // ============================================
 // RUTAS DE PERFIL (TODOS LOS ROLES)
