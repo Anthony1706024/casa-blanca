@@ -25,6 +25,24 @@
     </div>
 </div>
 
+<!-- Cocina: en qué ticket sale -->
+@php $cocinaActual = old('cocina', $producto->cocina ?? \App\Models\Producto::COCINA_POR_DEFECTO); @endphp
+<div class="md:col-span-2">
+    <label class="block text-gray-700 mb-2 font-semibold text-sm md:text-base">
+        Se prepara en <span class="text-red-500">*</span>
+    </label>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        @foreach(\App\Models\Producto::COCINAS as $valor => $texto)
+            <label class="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer">
+                <input type="radio" name="cocina" value="{{ $valor }}" {{ $cocinaActual === $valor ? 'checked' : '' }}>
+                <span class="text-sm font-semibold">{{ $texto }}</span>
+            </label>
+        @endforeach
+    </div>
+    <p class="text-gray-500 text-xs mt-1">Al imprimir el ticket de un pedido, este producto sale en el ticket de esa cocina.</p>
+    @error('cocina')<p class="text-red-500 text-sm mt-1">{{ $message }}</p>@enderror
+</div>
+
 <!-- Receta -->
 <div id="bloqueReceta" class="md:col-span-2 hidden">
     <label class="block text-gray-700 mb-2 font-semibold text-sm md:text-base">

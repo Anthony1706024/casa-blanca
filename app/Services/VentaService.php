@@ -24,29 +24,8 @@ class VentaService
             throw ValidationException::withMessages(['items' => 'Selecciona al menos un producto.']);
         }
 
-        $productos = Producto::with('insumos')
-            ->whereKey(array_keys($cantidades))
-            ->whereNotNull('precio_venta')
-            ->get();
-
-        if ($productos->count() !== count($cantidades)) {
-            throw ValidationException::withMessages(['items' => 'Uno de los productos ya no está disponible.']);
-        }
-
-        $lineas = $productos->map(fn ($producto) => [$producto, $cantidades[$producto->id]]);
-        [$necesarioProductos, $necesarioInsumos] = $this->calcularNecesario($lineas, 'items');
-
-        foreach ($productos->whereIn('id', array_keys($necesarioProductos)) as $producto) {
-            if ($producto->stock < $necesarioProductos[$producto->id]) {
-                throw ValidationException::withMessages(['items' => "Stock insuficiente de {$producto->nombre}."]);
-            }
-        }
-
-        foreach (Insumo::whereKey(array_keys($necesarioInsumos))->get() as $insumo) {
-            if (round((float) $insumo->stock - $necesarioInsumos[$insumo->id], 3) < 0) {
-                throw ValidationException::withMessages(['items' => "No alcanza el insumo {$insumo->nombre} para este pedido."]);
-            }
-        }
+        $productos = $this->productosPedidos($cantidades);
+        $this->verificarDisponibilidad($productos->map(fn ($producto) => [$producto, $cantidades[$producto->id]]));
 
         return DB::transaction(function () use ($datos, $cantidades, $origen, $mozo, $productos) {
             $total = $productos->sum(fn ($producto) => $producto->precio_venta * $cantidades[$producto->id]);
@@ -73,6 +52,102 @@ class VentaService
             }
 
             return $pedido;
+        });
+    }
+
+    // ==========================================
+    // AGREGAR ADICIONALES A UN PEDIDO PENDIENTE (misma mesa, mismo cobro)
+    // Si el producto ya está en el pedido con el mismo precio, se suma a esa línea;
+    // lo ya enviado a cocina no cambia, así el próximo ticket lleva solo lo nuevo.
+    // ==========================================
+    public function agregarItems(int $pedidoId, array $cantidades): Pedido
+    {
+        $cantidades = array_filter(array_map('intval', $cantidades), fn ($cantidad) => $cantidad > 0);
+
+        if (empty($cantidades)) {
+            throw ValidationException::withMessages(['items' => 'Selecciona al menos un producto para agregar.']);
+        }
+
+        return DB::transaction(function () use ($pedidoId, $cantidades) {
+            $pedido = Pedido::lockForUpdate()->findOrFail($pedidoId);
+
+            if ($pedido->estado !== Pedido::PENDIENTE) {
+                throw ValidationException::withMessages(['pedido' => 'Solo se pueden agregar productos a un pedido pendiente.']);
+            }
+
+            $productos = $this->productosPedidos($cantidades);
+            $items = $pedido->items()->with('producto.insumos')->get();
+
+            // Lo que ya tiene el pedido más lo nuevo debe alcanzar con el stock actual
+            $lineas = $items->filter(fn ($item) => $item->producto)
+                ->map(fn ($item) => [$item->producto, $item->cantidad])
+                ->concat($productos->map(fn ($producto) => [$producto, $cantidades[$producto->id]]));
+            $this->verificarDisponibilidad($lineas);
+
+            foreach ($productos as $producto) {
+                $cantidad = $cantidades[$producto->id];
+                $existente = $items->first(fn ($item) => $item->producto_id === $producto->id
+                    && abs((float) $item->precio_unitario - (float) $producto->precio_venta) < 0.005);
+
+                if ($existente) {
+                    $existente->update([
+                        'cantidad' => $existente->cantidad + $cantidad,
+                        'subtotal' => round($existente->precio_unitario * ($existente->cantidad + $cantidad), 2),
+                    ]);
+                } else {
+                    $pedido->items()->create([
+                        'producto_id' => $producto->id,
+                        'producto_nombre' => $producto->nombre,
+                        'precio_unitario' => $producto->precio_venta,
+                        'cantidad' => $cantidad,
+                        'subtotal' => round($producto->precio_venta * $cantidad, 2),
+                    ]);
+                }
+            }
+
+            $pedido->update(['total' => round((float) $pedido->items()->sum('subtotal'), 2)]);
+
+            return $pedido;
+        });
+    }
+
+    // ==========================================
+    // QUITAR DEL PEDIDO PENDIENTE: resta unidades de una línea o la elimina.
+    // No toca stock (todavía no se descontó). Devuelve [pedido, nombre, quitadas, ya_en_cocina].
+    // ==========================================
+    public function quitarItem(int $pedidoId, int $itemId, ?int $cantidad = null): array
+    {
+        return DB::transaction(function () use ($pedidoId, $itemId, $cantidad) {
+            $pedido = Pedido::lockForUpdate()->findOrFail($pedidoId);
+
+            if ($pedido->estado !== Pedido::PENDIENTE) {
+                throw ValidationException::withMessages(['pedido' => 'Solo se pueden quitar productos de un pedido pendiente.']);
+            }
+
+            $item = $pedido->items()->whereKey($itemId)->firstOrFail();
+            $quitar = $cantidad === null ? (int) $item->cantidad : min(max(1, $cantidad), (int) $item->cantidad);
+            $queda = $item->cantidad - $quitar;
+
+            if ($queda === 0 && $pedido->items()->count() === 1) {
+                throw ValidationException::withMessages(['pedido' => 'Es el único producto del pedido: si ya no lo quiere, anula el pedido.']);
+            }
+
+            // Si ya había salido a cocina, se avisa para que cocina no lo prepare
+            $enCocina = min($quitar, max(0, (int) $item->cantidad_enviada - $queda));
+
+            if ($queda === 0) {
+                $item->delete();
+            } else {
+                $item->update([
+                    'cantidad' => $queda,
+                    'cantidad_enviada' => min((int) $item->cantidad_enviada, $queda),
+                    'subtotal' => round($item->precio_unitario * $queda, 2),
+                ]);
+            }
+
+            $pedido->update(['total' => round((float) $pedido->items()->sum('subtotal'), 2)]);
+
+            return [$pedido, $item->producto_nombre, $quitar, $enCocina];
         });
     }
 
@@ -133,6 +208,39 @@ class VentaService
 
             $pedido->update(['estado' => Pedido::ANULADO]);
         });
+    }
+
+    // Productos que se pueden pedir (con precio); falla si alguno ya no existe
+    private function productosPedidos(array $cantidades)
+    {
+        $productos = Producto::with('insumos')
+            ->whereKey(array_keys($cantidades))
+            ->whereNotNull('precio_venta')
+            ->get();
+
+        if ($productos->count() !== count($cantidades)) {
+            throw ValidationException::withMessages(['items' => 'Uno de los productos ya no está disponible.']);
+        }
+
+        return $productos;
+    }
+
+    // Revisa sin descontar que el stock alcance. $lineas = colección de [Producto, cantidad]
+    private function verificarDisponibilidad($lineas): void
+    {
+        [$necesarioProductos, $necesarioInsumos] = $this->calcularNecesario($lineas, 'items');
+
+        foreach (Producto::whereKey(array_keys($necesarioProductos))->get() as $producto) {
+            if ($producto->stock < $necesarioProductos[$producto->id]) {
+                throw ValidationException::withMessages(['items' => "Stock insuficiente de {$producto->nombre}."]);
+            }
+        }
+
+        foreach (Insumo::whereKey(array_keys($necesarioInsumos))->get() as $insumo) {
+            if (round((float) $insumo->stock - $necesarioInsumos[$insumo->id], 3) < 0) {
+                throw ValidationException::withMessages(['items' => "No alcanza el insumo {$insumo->nombre} para este pedido."]);
+            }
+        }
     }
 
     private function descontarStock(Pedido $pedido): void

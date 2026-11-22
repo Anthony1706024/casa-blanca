@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\PrecioController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\VentaController;
 use App\Http\Controllers\Cajera\CobroController;
+use App\Http\Controllers\Cajera\ComandaController;
 use App\Http\Controllers\Cajera\DashboardController as CajeraDashboard;
 use App\Http\Controllers\CartaController;
 use App\Http\Controllers\InicioController;
@@ -138,6 +139,13 @@ Route::middleware(['auth', 'checkrole:cajera'])->prefix('cajera')->name('cajera.
     Route::post('/pedidos/{id}/cobrar', [CobroController::class, 'cobrar'])->name('pedidos.cobrar');
     Route::post('/pedidos/{id}/anular', [CobroController::class, 'anular'])->name('pedidos.anular');
     Route::get('/recibos', [CobroController::class, 'recibos'])->name('recibos.index');
+
+    // Adicionales para la misma mesa y tickets de cocina
+    Route::get('/pedidos/{id}/adicionales', [CobroController::class, 'adicionales'])->name('pedidos.adicionales');
+    Route::post('/pedidos/{id}/adicionales', [CobroController::class, 'adicionalesStore'])->name('pedidos.adicionales.store');
+    Route::post('/pedidos/{id}/items/{item}/quitar', [CobroController::class, 'quitarItem'])->name('pedidos.items.quitar');
+    Route::post('/pedidos/{id}/comanda', [ComandaController::class, 'imprimir'])->name('pedidos.comanda');
+    Route::get('/pedidos/{id}/comanda', [ComandaController::class, 'ver'])->name('pedidos.comanda.ver');
 });
 
 // Recibo imprimible: lo emite caja y lo consulta el administrador

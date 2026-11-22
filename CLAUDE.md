@@ -57,6 +57,12 @@ php artisan db:seed --class=RecetasSeeder   # insumos and estimated recipes for 
 - A charge takes 1 or 2 payments (`pagos`) that must add up to the order total. `numero_operacion` is required except for `efectivo`.
 - `PD-` and `RC-` numbers are accessors built from the id, not columns.
 
+### Kitchen tickets (comandas) and add-ons
+
+- `productos.cocina` (`Producto::COCINAS`: `cocina_1`, `bebidas`, `cocina_2`, default `cocina_2`) says which kitchen ticket a product prints on. The admin edits it in the product form (`almacen/_tipo`) and in bulk in `admin.precios.index`.
+- From the charge screen, caja can add add-ons to a pending order (`VentaService::agregarItems`, merged into the existing line when the price is the same), remove one unit or a whole line (`VentaService::quitarItem`, which refuses to empty the order and warns when the units were already sent to the kitchen) and print kitchen tickets (`Cajera\ComandaController`). `ComandaService::lote` builds one ticket per kitchen in `COCINAS` order and only prints what `pedido_items.cantidad_enviada` says has not been sent yet; `todo=1` reprints everything.
+- With a printer configured, `TicketeraService::comanda` sends all tickets in one job, each ending with a paper cut, and items are marked sent only if printing succeeds. Without one, they are marked sent and `cajera/pedidos/comanda` prints them from the browser, one page per ticket.
+
 ### Receipt printer (ticketera)
 
 - After a charge, `CobroController::cobrar` sends the voucher straight to the thermal printer through `App\Services\TicketeraService`, which builds ESC/POS bytes (code page 850, 48 columns for 80 mm or 32 for 58 mm) and runs `resources/ticketera/imprimir-raw.ps1` to write them RAW to the Windows printer. A failed print never undoes the charge; it only flashes an `error` with a reprint button (`recibos.imprimir`).

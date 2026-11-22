@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Producto;
 use App\Models\Categoria;
 use App\Models\Insumo;
+use App\Models\Producto;
 use App\Models\Subcategoria;
 use App\Services\ImagenService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AlmacenController extends Controller
 {
@@ -23,9 +23,9 @@ class AlmacenController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('codigo', 'LIKE', "%{$search}%")
-                  ->orWhere('nombre', 'LIKE', "%{$search}%");
+                    ->orWhere('nombre', 'LIKE', "%{$search}%");
             });
         }
 
@@ -77,11 +77,11 @@ class AlmacenController extends Controller
         $ultimoProducto = Producto::orderBy('id', 'desc')->first();
         if ($ultimoProducto) {
             $numero = intval(substr($ultimoProducto->codigo, 4)) + 1;
-            $codigoSugerido = 'PRO-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
+            $codigoSugerido = 'PRO-'.str_pad($numero, 6, '0', STR_PAD_LEFT);
         } else {
             $codigoSugerido = 'PRO-000001';
         }
-        
+
         return view('admin.almacen.create', compact('categorias', 'subcategorias', 'insumos', 'codigoSugerido'));
     }
 
@@ -142,6 +142,7 @@ class AlmacenController extends Controller
         $categorias = Categoria::all();
         $subcategorias = Subcategoria::all();
         $insumos = Insumo::orderBy('nombre')->get();
+
         return view('admin.almacen.edit', compact('producto', 'categorias', 'subcategorias', 'insumos'));
     }
 
@@ -222,6 +223,7 @@ class AlmacenController extends Controller
     public function categoriasIndex()
     {
         $categorias = Categoria::withCount('productos')->get();
+
         return view('admin.almacen.categorias', compact('categorias'));
     }
 
@@ -241,7 +243,7 @@ class AlmacenController extends Controller
     public function categoriasDestroy($id)
     {
         $categoria = Categoria::findOrFail($id);
-        
+
         if ($categoria->productos()->count() > 0) {
             return redirect()->route('admin.categorias.index')
                 ->with('error', 'No puedes eliminar una categoría con productos asociados');
@@ -260,6 +262,7 @@ class AlmacenController extends Controller
     {
         $subcategorias = Subcategoria::with('categoria')->get();
         $categorias = Categoria::all();
+
         return view('admin.subcategorias.index', compact('subcategorias', 'categorias'));
     }
 
@@ -280,7 +283,7 @@ class AlmacenController extends Controller
     public function subcategoriasDestroy($id)
     {
         $subcategoria = Subcategoria::findOrFail($id);
-        
+
         if ($subcategoria->productos()->count() > 0) {
             return redirect()->route('admin.subcategorias.index')
                 ->with('error', 'No puedes eliminar una subcategoría con productos asociados');
@@ -296,6 +299,7 @@ class AlmacenController extends Controller
     public function getSubcategorias($categoria_id)
     {
         $subcategorias = Subcategoria::where('categoria_id', $categoria_id)->get();
+
         return response()->json($subcategorias);
     }
 
@@ -306,6 +310,7 @@ class AlmacenController extends Controller
     {
         return [
             'tipo' => ['required', Rule::in([Producto::DIRECTO, Producto::PLATO])],
+            'cocina' => ['sometimes', 'required', Rule::in(array_keys(Producto::COCINAS))],
             'stock' => 'exclude_if:tipo,plato|required_if:tipo,directo|integer|min:0',
             'receta' => 'exclude_if:tipo,directo|required_if:tipo,plato|array|min:1',
             'receta.*.insumo_id' => 'exclude_if:tipo,directo|required|distinct|exists:insumos,id',
@@ -322,6 +327,8 @@ class AlmacenController extends Controller
             'receta.*.insumo_id.distinct' => 'No repitas el mismo insumo en la receta.',
             'receta.*.cantidad.required' => 'Indica la cantidad del insumo.',
             'receta.*.cantidad.gt' => 'La cantidad del insumo debe ser mayor a cero.',
+            'cocina.required' => 'Indica en qué cocina se prepara.',
+            'cocina.in' => 'Elige una cocina válida.',
         ];
     }
 

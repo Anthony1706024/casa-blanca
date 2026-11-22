@@ -8,6 +8,7 @@ use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Recibo;
+use App\Services\ComandaService;
 use App\Services\TicketeraService;
 use App\Services\VentaService;
 use Illuminate\Http\Request;
@@ -52,19 +53,69 @@ class CobroController extends Controller
     }
 
     // ==========================================
+    // ADICIONALES: más productos para la misma mesa, en el mismo pedido
+    // ==========================================
+    public function adicionales($id)
+    {
+        $pedido = Pedido::with('items')->findOrFail($id);
+
+        if ($pedido->estado !== Pedido::PENDIENTE) {
+            return redirect()->route('cajera.pedidos.show', $pedido->id)
+                ->with('error', 'Solo se pueden agregar productos a un pedido pendiente.');
+        }
+
+        $productos = Producto::disponiblesParaVenta();
+
+        return view('cajera.pedidos.adicionales', compact('pedido', 'productos'));
+    }
+
+    public function adicionalesStore(Request $request, $id, VentaService $ventas)
+    {
+        $datos = $request->validate([
+            'items' => 'required|array',
+            'items.*' => 'integer|min:0|max:99',
+        ], [
+            'items.required' => 'Selecciona al menos un producto para agregar.',
+        ]);
+
+        $antes = Pedido::findOrFail($id)->total;
+        $pedido = $ventas->agregarItems((int) $id, $datos['items']);
+        $agregado = number_format((float) $pedido->total - (float) $antes, 2);
+
+        return redirect()->route('cajera.pedidos.show', $pedido->id)
+            ->with('success', "Adicionales agregados (S/ {$agregado}). Imprime el ticket para enviarlos a cocina.");
+    }
+
+    // Quitar una unidad (cantidad=1) o la línea completa (sin cantidad)
+    public function quitarItem(Request $request, $id, $item, VentaService $ventas)
+    {
+        $request->validate(['cantidad' => 'nullable|integer|min:1|max:99']);
+
+        [$pedido, $nombre, $quitadas, $enCocina] = $ventas->quitarItem((int) $id, (int) $item, $request->integer('cantidad') ?: null);
+
+        $mensaje = "Se quitó {$quitadas} × {$nombre}. Nuevo total: S/ ".number_format((float) $pedido->total, 2).'.';
+        if ($enCocina > 0) {
+            $mensaje .= " Ya estaba en cocina: avisa que no lo preparen ({$enCocina}).";
+        }
+
+        return redirect()->route('cajera.pedidos.show', $pedido->id)->with('success', $mensaje);
+    }
+
+    // ==========================================
     // DETALLE DEL PEDIDO Y FORMULARIO DE COBRO
     // ==========================================
     public function show($id)
     {
-        $pedido = Pedido::with(['items', 'mozo', 'recibo'])->findOrFail($id);
+        $pedido = Pedido::with(['items.producto', 'mozo', 'recibo'])->findOrFail($id);
 
         if ($pedido->recibo) {
             return redirect()->route('recibos.show', $pedido->recibo->id);
         }
 
         $metodos = Pago::METODOS;
+        $porEnviar = app(ComandaService::class)->porEnviar($pedido);
 
-        return view('cajera.pedidos.show', compact('pedido', 'metodos'));
+        return view('cajera.pedidos.show', compact('pedido', 'metodos', 'porEnviar'));
     }
 
     public function cobrar(Request $request, $id, VentaService $ventas, TicketeraService $ticketera)

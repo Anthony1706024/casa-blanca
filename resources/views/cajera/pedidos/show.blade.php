@@ -43,8 +43,36 @@
                 @foreach($pedido->items as $item)
                     <tr class="border-b border-gray-100">
                         <td class="py-2 pr-2 text-gray-600 align-top">{{ $item->cantidad }} ×</td>
-                        <td class="py-2 text-black">{{ $item->producto_nombre }}</td>
+                        <td class="py-2 text-black">
+                            {{ $item->producto_nombre }}
+                            <div class="text-xs text-gray-400">
+                                {{ $item->producto->cocina_nombre ?? '' }}
+                                @if($item->por_enviar > 0)
+                                    · <span class="text-amber-600 font-semibold">{{ $item->por_enviar === (int) $item->cantidad ? 'Por enviar a cocina' : $item->por_enviar.' por enviar a cocina' }}</span>
+                                @else
+                                    · <span class="text-green-600"><i class="fas fa-check"></i> En cocina</span>
+                                @endif
+                            </div>
+                        </td>
                         <td class="py-2 text-right whitespace-nowrap align-top">S/ {{ number_format($item->subtotal, 2) }}</td>
+                        @if($pedido->estado === \App\Models\Pedido::PENDIENTE)
+                            @php $avisoCocina = $item->cantidad_enviada > 0 ? ' Ya salió a cocina: avisa que no lo preparen.' : ''; @endphp
+                            <td class="py-2 pl-2 align-top whitespace-nowrap text-right">
+                                @if($item->cantidad > 1)
+                                    <form method="POST" action="{{ route('cajera.pedidos.items.quitar', [$pedido->id, $item->id]) }}" class="inline"
+                                          onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Quitar 1 × '.$item->producto_nombre.'?'.$avisoCocina) }})">
+                                        @csrf
+                                        <input type="hidden" name="cantidad" value="1">
+                                        <button type="submit" title="Quitar uno" aria-label="Quitar uno de {{ $item->producto_nombre }}" class="text-gray-600 bg-gray-100 hover:bg-gray-200 w-7 h-7 rounded font-bold">−</button>
+                                    </form>
+                                @endif
+                                <form method="POST" action="{{ route('cajera.pedidos.items.quitar', [$pedido->id, $item->id]) }}" class="inline"
+                                      onsubmit="return confirm({{ \Illuminate\Support\Js::from('¿Quitar '.$item->cantidad.' × '.$item->producto_nombre.' del pedido?'.$avisoCocina) }})">
+                                    @csrf
+                                    <button type="submit" title="Quitar del pedido" aria-label="Quitar {{ $item->producto_nombre }} del pedido" class="text-red-600 bg-red-50 hover:bg-red-100 w-7 h-7 rounded"><i class="fas fa-trash-alt text-xs"></i></button>
+                                </form>
+                            </td>
+                        @endif
                     </tr>
                 @endforeach
             </table>
@@ -53,6 +81,31 @@
                 <span>Total</span>
                 <span class="text-orange-600">S/ {{ number_format($pedido->total, 2) }}</span>
             </div>
+
+            @if($pedido->estado === \App\Models\Pedido::PENDIENTE)
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 pt-5 border-t border-gray-200">
+                    <a href="{{ route('cajera.pedidos.adicionales', $pedido->id) }}" class="text-center border-2 border-orange-500 text-orange-600 hover:bg-orange-50 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                        <i class="fas fa-plus-circle mr-1"></i> Agregar adicionales
+                    </a>
+                    <form method="POST" action="{{ route('cajera.pedidos.comanda', $pedido->id) }}">
+                        @csrf
+                        @if($porEnviar > 0)
+                            <button type="submit" class="w-full bg-gray-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                                <i class="fas fa-print mr-1"></i> Imprimir ticket cocina
+                                <span class="ml-1 bg-amber-400 text-black text-xs font-bold rounded-full px-2 py-0.5">{{ $porEnviar }}</span>
+                            </button>
+                        @else
+                            <input type="hidden" name="todo" value="1">
+                            <button type="submit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-semibold transition text-sm">
+                                <i class="fas fa-redo mr-1"></i> Reimprimir tickets
+                            </button>
+                        @endif
+                    </form>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">
+                    Sale un ticket por cocina, en este orden: {{ implode(', ', \App\Models\Producto::COCINAS) }}. Solo se imprime lo que aún no se envió.
+                </p>
+            @endif
         </div>
 
         <!-- Cobro -->

@@ -9,6 +9,7 @@ use App\Models\Producto;
 use App\Models\ProductoPrecio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PrecioController extends Controller
 {
@@ -27,6 +28,10 @@ class PrecioController extends Controller
             $query->where('categoria_id', $request->categoria);
         }
 
+        if (array_key_exists((string) $request->cocina, Producto::COCINAS)) {
+            $query->where('cocina', $request->cocina);
+        }
+
         $productos = $query->orderBy('nombre')->paginate(30)->withQueryString();
         $categorias = Categoria::orderBy('nombre')->get();
 
@@ -41,7 +46,10 @@ class PrecioController extends Controller
             'destacados' => 'nullable|array',
             'descripciones' => 'nullable|array',
             'descripciones.*' => 'nullable|string|max:1000',
+            'cocinas' => 'nullable|array',
+            'cocinas.*' => ['required', Rule::in(array_keys(Producto::COCINAS))],
         ], [
+            'cocinas.*.in' => 'Elige una cocina válida.',
             'precios.*.numeric' => 'Los precios deben ser números.',
             'precios.*.min' => 'Un precio no puede ser negativo.',
         ]);
@@ -57,6 +65,9 @@ class PrecioController extends Controller
                 $producto->destacado = in_array($producto->id, $destacados);
                 if (array_key_exists($producto->id, $request->input('descripciones', []))) {
                     $producto->descripcion = $request->descripciones[$producto->id];
+                }
+                if (array_key_exists($producto->id, $request->input('cocinas', []))) {
+                    $producto->cocina = $request->cocinas[$producto->id];
                 }
                 $producto->save();
                 $cambios += $precioCambio ? 1 : 0;

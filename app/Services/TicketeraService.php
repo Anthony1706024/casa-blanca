@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Contenido;
+use App\Models\Pedido;
+use App\Models\Producto;
 use App\Models\Recibo;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -26,6 +28,8 @@ class TicketeraService
 
     private const GRANDE = "\x1D\x21\x11";        // doble alto y ancho
 
+    private const ALTO = "\x1D\x21\x01";          // doble alto, mismo ancho
+
     private const NORMAL = "\x1D\x21\x00";
 
     private const CORTAR = "\x1D\x56\x42\x00";    // avanza y corta el papel
@@ -42,12 +46,88 @@ class TicketeraService
     // Devuelve true si el voucher llegó completo a la impresora
     public function imprimirVoucher(Recibo $recibo): bool
     {
-        if (! $this->configurada()) {
-            return false;
+        return $this->configurada() && $this->enviar($this->voucher($recibo), 'el voucher '.$recibo->numero);
+    }
+
+    // Tickets de cocina: uno por cocina, cada uno con su corte de papel. $lote viene de ComandaService::lote
+    public function imprimirComanda(Pedido $pedido, array $lote): bool
+    {
+        return $this->configurada() && $this->enviar($this->comanda($pedido, $lote), 'la comanda del pedido '.$pedido->numero);
+    }
+
+    // Arma los bytes de los tickets de cocina. Público para poder revisarlo en pruebas.
+    public function comanda(Pedido $pedido, array $lote): string
+    {
+        $pedido->loadMissing('mozo');
+        $negocio = Contenido::valores();
+        $ahora = now();
+        $hora = $ahora->format('h:i').($ahora->format('A') === 'AM' ? ' a. m.' : ' p. m.');
+        $total = count($lote['tickets']);
+        $numero = 0;
+
+        $this->columnas = $negocio['ticket_ancho'] === '58' ? 32 : 48;
+        $this->datos = '';
+
+        foreach ($lote['tickets'] as $cocina => $lineas) {
+            $numero++;
+            $this->comando(self::INICIAR.self::TABLA_850);
+
+            // Cocina y mesa en grande: es lo primero que se lee
+            $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
+            $this->linea(mb_strtoupper(Producto::COCINAS[$cocina] ?? $cocina));
+            $this->comando(self::NORMAL);
+            if ($lote['adicional']) {
+                $this->linea('*** ADICIONAL ***');
+            }
+            if ($lote['reimpresion']) {
+                $this->linea('(REIMPRESIÓN)');
+            }
+            $this->comando(self::SIN_NEGRITA);
+            $this->linea("Ticket {$numero} de {$total}");
+            $this->comando(self::IZQUIERDA);
+            $this->raya('=');
+
+            $this->comando(self::CENTRO.self::NEGRITA.self::GRANDE);
+            $this->linea($pedido->mesa ? 'MESA '.$pedido->mesa : 'SIN MESA');
+            $this->comando(self::NORMAL.self::SIN_NEGRITA.self::IZQUIERDA);
+            $this->dosLados('Pedido: '.$pedido->numero, $ahora->format('d/m').' '.$hora);
+            if ($pedido->cliente_nombre) {
+                $this->linea('Cliente: '.$pedido->cliente_nombre);
+            }
+            $this->linea('Atiende: '.($pedido->mozo ? Str::before($pedido->mozo->name.' ', ' ') : 'Pedido del cliente'));
+            $this->raya();
+
+            // Productos: cantidad y nombre en doble alto para leerlos de lejos
+            $this->comando(self::NEGRITA.self::ALTO);
+            foreach ($lineas as $linea) {
+                $cantidad = str_pad($linea['cantidad'], 2, ' ', STR_PAD_LEFT).' x ';
+                $partes = explode("\n", wordwrap($linea['nombre'], $this->columnas - mb_strlen($cantidad), "\n", true));
+                $this->linea($cantidad.array_shift($partes));
+                foreach ($partes as $parte) {
+                    $this->linea(str_repeat(' ', mb_strlen($cantidad)).$parte);
+                }
+            }
+            $this->comando(self::NORMAL.self::SIN_NEGRITA);
+            $this->raya();
+
+            if ($pedido->observacion) {
+                $this->negrita('OBSERVACIÓN:');
+                $this->linea(wordwrap($pedido->observacion, $this->columnas, "\n", true));
+                $this->raya();
+            }
+
+            $this->linea("\n\n\n");
+            $this->comando(self::CORTAR);
         }
 
-        $archivo = tempnam(sys_get_temp_dir(), 'voucher');
-        file_put_contents($archivo, $this->voucher($recibo));
+        return $this->datos;
+    }
+
+    // Manda los bytes a la ticketera en modo RAW. Devuelve true si llegaron completos.
+    private function enviar(string $bytes, string $que): bool
+    {
+        $archivo = tempnam(sys_get_temp_dir(), 'ticket');
+        file_put_contents($archivo, $bytes);
 
         try {
             // `php artisan serve` quita las variables de Windows y sin SystemRoot PowerShell no arranca (error 8009001d)
@@ -66,7 +146,7 @@ class TicketeraService
             ]);
 
             if (! $resultado->successful()) {
-                Log::warning('No se pudo imprimir el voucher '.$recibo->numero, ['error' => $resultado->errorOutput()]);
+                Log::warning('No se pudo imprimir '.$que, ['error' => $resultado->errorOutput()]);
             }
 
             return $resultado->successful();

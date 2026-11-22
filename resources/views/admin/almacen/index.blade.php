@@ -136,7 +136,7 @@
                                 <td class="py-3">
                                     <span class="text-orange-600 font-mono text-xs md:text-sm font-medium">{{ $producto->codigo }}</span>
                                 </td>
-                                <td class="py-3 text-black font-medium text-xs md:text-sm">{{ $producto->nombre }}@if($producto->esPlato())<span class="block text-xs font-normal text-orange-600"><i class="fas fa-utensils mr-1"></i>Plato con receta</span>@endif</td>
+                                <td class="py-3 text-black font-medium text-xs md:text-sm">{{ $producto->nombre }}@if($producto->esPlato())<span class="block text-xs font-normal text-orange-600"><i class="fas fa-utensils mr-1"></i>Plato con receta</span>@endif<span class="block text-xs font-normal text-gray-500"><i class="fas fa-fire-burner mr-1"></i>{{ $producto->cocina_nombre }}</span></td>
                                 <td class="py-3 text-gray-600 text-xs md:text-sm hidden sm:table-cell">{{ $producto->categoria->nombre ?? 'Sin categoría' }}</td>
                                 <td class="py-3 text-gray-500 text-xs md:text-sm hidden lg:table-cell">{{ $producto->subcategoria->nombre ?? '-' }}</td>
                                 <td class="py-3 text-center">

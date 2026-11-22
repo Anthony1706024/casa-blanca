@@ -9,12 +9,23 @@ use Illuminate\Support\Facades\Storage;
 class Producto extends Model
 {
     public const DIRECTO = 'directo';
+
     public const PLATO = 'plato';
+
+    // Dónde se prepara: cada una sale en su propio ticket, en este orden
+    public const COCINAS = [
+        'cocina_1' => 'Cocina 1',
+        'bebidas' => 'Bebidas y tragos',
+        'cocina_2' => 'Cocina 2',
+    ];
+
+    public const COCINA_POR_DEFECTO = 'cocina_2';
 
     protected $fillable = [
         'codigo',
         'nombre',
         'tipo',
+        'cocina',
         'destacado',
         'categoria_id',
         'subcategoria_id',
@@ -22,7 +33,7 @@ class Producto extends Model
         'precio_compra',
         'precio_venta',
         'descripcion',
-        'imagen'
+        'imagen',
     ];
 
     protected function casts(): array
@@ -70,6 +81,11 @@ class Producto extends Model
         return $this->hasMany(PedidoItem::class);
     }
 
+    public function getCocinaNombreAttribute(): string
+    {
+        return self::COCINAS[$this->cocina] ?? self::COCINAS[self::COCINA_POR_DEFECTO];
+    }
+
     public function esPlato()
     {
         return $this->tipo === self::PLATO;
@@ -107,6 +123,7 @@ class Producto extends Model
         if ($this->imagen && Storage::disk('public')->exists($this->imagen)) {
             return Storage::url($this->imagen);
         }
+
         return asset('img/sin-imagen.png');
     }
 
