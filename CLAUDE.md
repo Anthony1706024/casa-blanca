@@ -96,6 +96,7 @@ Production (Railway) data changes ship as data migrations, because Railway runs 
 
 - `admin.ingresos.index` ("Ingresos diarios") and `admin.egresos.index` share `App\Support\Periodo` (`?periodo=dia|semana|mes|anio|rango`, with `fecha` or `desde`/`hasta`; weeks run Monday to Sunday; a year or a range over 62 days is grouped by month) and `App\Services\FinanzasService`. Income comes from `recibos.total` and `pagos.monto` by `recibos.created_at`; the balance is income minus egresos of the same period.
 - Egresos (`Egreso`, `fecha` stored as a plain `Y-m-d` by its attribute mutator so SQLite and MySQL filter alike) belong to a `CategoriaEgreso` (`categorias_egreso`); the migration seeds the default types and the admin adds more from the egresos screen. A type with egresos cannot be deleted.
+- The opening cash balance (`SaldoInicial`, `saldos_iniciales`, one per `fecha`; saving a date again replaces it) is set on the income screen. A period's opening balance is the one on its earliest day that has one, and the closing balance is opening + income − egresos (just the balance when there is none).
 - Both screens export CSV for Excel (`;`, UTF-8 BOM) and print with `window.print()` (the `.no-print` class hides the filters and the sidebar).
 
 ### Website content

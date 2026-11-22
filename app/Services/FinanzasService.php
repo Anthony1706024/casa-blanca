@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Egreso;
 use App\Models\Pago;
 use App\Models\Recibo;
+use App\Models\SaldoInicial;
 use App\Support\Periodo;
 use Carbon\Carbon;
 
@@ -31,7 +32,14 @@ class FinanzasService
                 $porMetodo[$fila->metodo] = ($porMetodo[$fila->metodo] ?? 0) + (float) $fila->total;
             });
 
+        // Saldo con que abrió la caja: el del primer día del periodo que lo tenga registrado
+        $saldo = $this->saldos($periodo)->orderBy('fecha')->first();
+        $saldoInicial = $saldo ? (float) $saldo->monto : null;
+
         return [
+            'saldo_inicial' => $saldoInicial,
+            'saldo_fecha' => $saldo?->fecha,
+            'saldo_final' => ($saldoInicial ?? 0) + $ingresos - $egresos,
             'ingresos' => $ingresos,
             'recibos' => $cantidad,
             'promedio' => $cantidad ? $ingresos / $cantidad : 0,
@@ -56,6 +64,7 @@ class FinanzasService
                 'metodos' => array_fill_keys(array_keys(Pago::METODOS), 0.0),
                 'ingresos' => 0.0,
                 'egresos' => 0.0,
+                'saldo_inicial' => null,
             ];
         };
 
@@ -92,9 +101,21 @@ class FinanzasService
                 $filas[$k]['egresos'] += (float) $e->total;
             });
 
+        $this->saldos($periodo)->orderBy('fecha')->get()
+            ->each(function ($saldo) use ($fila, &$filas, $clave) {
+                $k = $clave($saldo->fecha->toDateString());
+                $fila($k);
+                $filas[$k]['saldo_inicial'] ??= (float) $saldo->monto;
+            });
+
         krsort($filas);
 
-        return array_values(array_map(fn ($f) => $f + ['balance' => $f['ingresos'] - $f['egresos']], $filas));
+        return array_values(array_map(function ($f) {
+            $f['balance'] = $f['ingresos'] - $f['egresos'];
+            $f['saldo_final'] = $f['saldo_inicial'] !== null ? $f['saldo_inicial'] + $f['balance'] : null;
+
+            return $f;
+        }, $filas));
     }
 
     // Total de egresos por categoría, de mayor a menor
@@ -113,6 +134,11 @@ class FinanzasService
     public function recibos(Periodo $periodo)
     {
         return Recibo::query()->whereBetween('created_at', [$periodo->inicio, $periodo->fin]);
+    }
+
+    public function saldos(Periodo $periodo)
+    {
+        return SaldoInicial::query()->whereBetween('fecha', [$periodo->inicio->toDateString(), $periodo->fin->toDateString()]);
     }
 
     public function egresos(Periodo $periodo)

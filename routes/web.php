@@ -111,6 +111,8 @@ Route::middleware(['auth', 'checkrole:admin'])->prefix('admin')->name('admin.')-
     // Finanzas: ingresos diarios y egresos (día, semana, mes, año o rango)
     Route::get('/ingresos', [IngresoController::class, 'index'])->name('ingresos.index');
     Route::get('/ingresos/exportar', [IngresoController::class, 'exportar'])->name('ingresos.exportar');
+    Route::post('/ingresos/saldo-inicial', [IngresoController::class, 'saldoGuardar'])->name('ingresos.saldo.guardar');
+    Route::delete('/ingresos/saldo-inicial/{id}', [IngresoController::class, 'saldoEliminar'])->name('ingresos.saldo.eliminar');
     Route::get('/egresos', [EgresoController::class, 'index'])->name('egresos.index');
     Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store');
     Route::get('/egresos/exportar', [EgresoController::class, 'exportar'])->name('egresos.exportar');

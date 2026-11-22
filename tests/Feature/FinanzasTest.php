@@ -8,6 +8,7 @@ use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\Recibo;
 use App\Models\Role;
+use App\Models\SaldoInicial;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,7 +172,46 @@ class FinanzasTest extends TestCase
 
         $this->venta('2026-11-22 12:00:00', ['yape' => 45]);
         $csv = $this->get(route('admin.ingresos.exportar', ['periodo' => 'dia']))->assertOk()->streamedContent();
-        $this->assertStringContainsString('22/11/2026;1;0.00;45.00', $csv);
+        $this->assertStringContainsString('22/11/2026;;1;0.00;45.00', $csv);
+    }
+
+    public function test_saldo_inicial_del_dia_y_saldo_final(): void
+    {
+        $this->venta('2026-11-22 13:00:00', ['efectivo' => 100]);
+        $this->egreso('2026-11-22', 'Gas', 30);
+
+        $this->actingAs($this->admin)->post(route('admin.ingresos.saldo.guardar'), ['fecha' => '2026-11-22', 'monto' => '200', 'nota' => 'Sencillo'])
+            ->assertRedirect()->assertSessionHas('success');
+
+        $respuesta = $this->get(route('admin.ingresos.index'))->assertOk();
+        $resumen = $respuesta->viewData('resumen');
+        $this->assertEquals(200, $resumen['saldo_inicial']);
+        $this->assertEquals(270, $resumen['saldo_final'], '200 + 100 - 30');
+        $this->assertEquals(70, $resumen['balance']);
+        $this->assertEquals(270, $respuesta->viewData('filas')[0]['saldo_final']);
+        $respuesta->assertSee('S/ 270.00')->assertSee('Sencillo');
+
+        // Un solo saldo por día: guardar otra vez lo reemplaza
+        $this->post(route('admin.ingresos.saldo.guardar'), ['fecha' => '2026-11-22', 'monto' => '150']);
+        $this->assertSame(1, SaldoInicial::count());
+        $this->assertEquals(220, $this->get(route('admin.ingresos.index'))->viewData('resumen')['saldo_final']);
+
+        // En el mes manda el saldo del primer día que lo tiene
+        $this->post(route('admin.ingresos.saldo.guardar'), ['fecha' => '2026-11-20', 'monto' => '50']);
+        $mes = $this->get(route('admin.ingresos.index', ['periodo' => 'mes']))->viewData('resumen');
+        $this->assertEquals(50, $mes['saldo_inicial']);
+        $this->assertEquals(120, $mes['saldo_final']);
+
+        $csv = $this->get(route('admin.ingresos.exportar', ['periodo' => 'dia']))->streamedContent();
+        $this->assertStringContainsString('22/11/2026;150.00;1;100.00', $csv);
+        $this->assertStringContainsString(';220.00', $csv);
+
+        // Sin saldo, el saldo final es el balance; no se aceptan negativos ni fechas futuras
+        $this->post(route('admin.ingresos.saldo.guardar'), ['fecha' => '2026-11-25', 'monto' => '-1'])->assertSessionHasErrors(['fecha', 'monto']);
+        $this->delete(route('admin.ingresos.saldo.eliminar', SaldoInicial::where('fecha', '2026-11-22')->value('id')))->assertRedirect();
+        $dia = $this->get(route('admin.ingresos.index'))->viewData('resumen');
+        $this->assertNull($dia['saldo_inicial']);
+        $this->assertEquals(70, $dia['saldo_final']);
     }
 
     public function test_solo_el_admin_entra(): void
