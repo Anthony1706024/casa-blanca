@@ -1,9 +1,9 @@
 <?php
 
+use App\Http\Middleware\CheckRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\CheckRole; // 👈 IMPORTAR EL MIDDLEWARE
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'checkrole' => CheckRole::class,
         ]);
+
+        // Railway atiende por https y reenvía a la app por http: se confía en su proxy
+        // para que los enlaces y formularios salgan con https
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
